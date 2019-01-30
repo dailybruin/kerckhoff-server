@@ -1,0 +1,12 @@
+site_name: kerckhoff-api
+site_description: The API backend for Kerckhoff.
+repo_url: https://github.com/kerckhoff/kerckhoff-api
+site_dir: site
+copyright: Copyright &copy; 2019, <a href="https://github.com/kerckhoff">kerckhoff</a>.
+dev_addr: 0.0.0.0:8001
+
+nav:
+  - Home: 'index.md'
+  - API:
+    - Authentication: 'api/authentication.md'
+    - Users: 'api/users.md'

@@ -1,0 +1,5 @@
+{
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": false,
+  "python.pythonPath": "/Users/hongee/Envs/kerckhoff-api-zRHzpn5t/bin/python"
+}
