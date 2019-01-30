@@ -22,39 +22,36 @@ class PackageSet(models.Model):
     drive_folder_url = models.URLField()
     default_content_type = models.CharField(max_length=2, choices=CONTENT_TYPE_CHOICES, default=PLAIN_TEXT)
 
-    def as_dict(self):
-        return {
-            "slug": self.slug,
-            "gdrive_url": self.drive_folder_url,
-        }
+class Package(models.Model):
+    slug = models.CharField(max_length=64, primary_key=True)
+    description = models.TextField(blank=True)
+    drive_folder_id = models.CharField(max_length=512)
+    drive_folder_url = models.URLField()
+    metadata = JSONField(blank=True, default=dict, null=True)
+    images = JSONField(blank=True, default=dict, null=True)
+    data = JSONField(blank=True, default=dict, null=True)
+    processing = models.BooleanField(default=False)
+    cached_article_preview = models.TextField(blank=True)
+    publish_date = models.DateField()
+    last_fetched_date = models.DateTimeField(null=True, blank=True)
+    package_set = models.ForeignKey(PackageSet, on_delete=models.PROTECT)
+    _content_type = models.CharField(max_length=2, choices=CONTENT_TYPE_CHOICES, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    def save(self, *args, **kwargs):
-        self.drive_folder_id = self.drive_folder_url.rsplit('/', 1)[-1]
-        super().save(*args, **kwargs)
+    # Versioning
+    latest_version = models.ForeignKey('PackageVersion', related_name='versions', on_delete=models.CASCADE, null=True, blank=True)
 
-    def populate(self, user):
-        print("Starting populate for %s" % self.slug)
-        google = get_oauth2_session(user)
-        # we don't care about the aml_data dict here
-        _, _, folders, _ = list_folder(google, self)
-        instances = []
-        for folder in folders:
-            try:
-                exists = Package.objects.get(slug=folder["title"])
-                instances.append(exists)
-            except Package.DoesNotExist:
-                pkg = Package.objects.create(
-                    slug=folder["title"],
-                    drive_folder_id=folder["id"],
-                    drive_folder_url=folder["alternateLink"],
-                    publish_date=timezone.now(),
-                    package_set=self
-                )
-                instances.append(pkg)
-        for instance in instances:
-            print("Processing %s" % instance.slug)
-            try:
-                instance.fetch_from_gdrive(user)
-            except Exception as e:
-                print("%s failed with error: %s" % (instance.slug, e))
-                continue
+
+# Snapshot of a Package instance at a particular time
+class PackageVersion(models.Model):
+    package = models.ForeignKey(Package, on_delete=models.PROTECT)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE)
+    version_description = models.TextField(blank=True)
+    article_data = models.TextField(blank=True)
+    data = JSONField(blank=True, default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    #TODO 
+    # Add package stateEnum for future (freeze should change state)
