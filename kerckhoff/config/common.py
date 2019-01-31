@@ -26,6 +26,7 @@ class Common(Configuration):
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
+        "kerckhoff.packages",
     )
 
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
