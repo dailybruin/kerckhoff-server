@@ -33,6 +33,7 @@ class Package(models.Model):
         unique_together = ('package_set', 'slug',)
 
 # Snapshot of a Package instance at a particular time
+# A PackageVersion object is a specific combination of PackageItem objects
 class PackageVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package = models.ForeignKey(Package, on_delete=models.PROTECT)
@@ -43,3 +44,18 @@ class PackageVersion(models.Model):
     
     #TODO 
     # Add package stateEnum for future (freeze should change state)
+
+class PackageItem(models.Model):   
+    DTYPE_CHOICES = (
+        ('text', "TEXT"),
+        ('aml', "ARCHIEML"),
+        ('image', "IMAGE"),
+        ('markdown', "MARKDOWN"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    package_version = models.ForeignKey(PackageVersion, on_delete=models.PROTECT)
+    data_type = models.CharField(choices=DTYPE_CHOICES, default='text')
+    data = JSONField(blank=True, default=dict, null=True)
+    
+    #TODO Interpret data (json) based on data_type
