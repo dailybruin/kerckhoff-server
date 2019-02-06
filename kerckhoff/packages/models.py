@@ -57,7 +57,7 @@ class PackageItem(models.Model):
         (AML, "ARCHIEML"),
         (IMAGE, "IMAGE"),
         (MARKDOWN, "MARKDOWN"),
-        (SPREADSHEET, "SPREADSHEET")
+        (SPREADSHEET, "SPREADSHEET"),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
