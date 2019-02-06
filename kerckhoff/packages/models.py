@@ -46,16 +46,23 @@ class PackageVersion(models.Model):
     # Add package stateEnum for future (freeze should change state)
 
 class PackageItem(models.Model):   
+    TEXT = 'txt'
+    AML = 'aml'
+    IMAGE = 'img'
+    MARKDOWN = 'mdn'
+    SPREADSHEET = 'xls'
+    
     DTYPE_CHOICES = (
-        ('text', "TEXT"),
-        ('aml', "ARCHIEML"),
-        ('image', "IMAGE"),
-        ('markdown', "MARKDOWN"),
+        (TEXT, "TEXT"),
+        (AML, "ARCHIEML"),
+        (IMAGE, "IMAGE"),
+        (MARKDOWN, "MARKDOWN"),
+        (SPREADSHEET, "SPREADSHEET")
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package_version = models.ForeignKey(PackageVersion, on_delete=models.PROTECT)
-    data_type = models.CharField(choices=DTYPE_CHOICES, default='text')
+    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default='text')
     data = JSONField(blank=True, default=dict, null=True)
     
     #TODO Interpret data (json) based on data_type
