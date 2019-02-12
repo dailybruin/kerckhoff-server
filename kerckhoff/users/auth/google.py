@@ -3,13 +3,15 @@ from typing import Tuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from requests import HTTPError
 from requests_oauthlib import OAuth2Session
 from rest_framework.exceptions import APIException
 
+from kerckhoff.userprofiles.models import UserProfile
 from kerckhoff.users.models import generate_username, generate_password, User as AppUser
-from .exceptions import InvalidCodeException
+from .exceptions import InvalidCodeException, NoAuthTokenException
 from .strategy import OAuthStrategy
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,6 @@ class GoogleOAuthStrategy(OAuthStrategy):
         Returns:
             Tuple[User, bool]: the user object and a flag to indicate if the user is newly registered
         """
-
         access_token = None
         register = False
 
@@ -83,6 +84,37 @@ class GoogleOAuthStrategy(OAuthStrategy):
         new_user.last_name = profile["family_name"]
         new_user.save()
         return new_user
+
+    @classmethod
+    def create_oauth2_session(cls, user: User) -> OAuth2Session:
+        """ Create OAuth2 session which automatically updates the access token if it has expired """
+        profile = UserProfile.objects.get(user=user)
+        auth_info: dict = profile.get_auth_information(cls.PROVIDER_KEY)
+        if auth_info is None or auth_info.get("refresh_token") is None:
+            raise NoAuthTokenException()
+
+        def token_updater(token: dict):
+            token['expires_at'] = timezone.now()
+            profile.update_auth_information(cls.PROVIDER_KEY, token)
+
+        client_id = settings.GOOGLE_OAUTH["CLIENT_ID"]
+        client_secret = settings.GOOGLE_OAUTH["CLIENT_SECRET"]
+
+        extra = {
+            'client_id': client_id,
+            'client_secret': client_secret
+        }
+
+        expires_in = auth_info["expires_at"] - timezone.now().timestamp()
+        token = {
+            'access_token': auth_info["access_token"],
+            'refresh_token': auth_info["refresh_token"],
+            'token_type': 'Bearer',
+            'expires_in': expires_in
+        }
+
+        return OAuth2Session(client_id, token=token, auto_refresh_kwargs=extra,
+                             auto_refresh_url=cls.TOKEN_URL, token_updater=token_updater)
 
     def _get_profile(self) -> dict:
         try:
