@@ -34,6 +34,7 @@ requests = "*"
 coreapi = "*"
 pygments = "*"
 drf-nested-routers = "*"
+whitenoise = "*"
 
 [dev-packages]
 black = "==18.9b0"
