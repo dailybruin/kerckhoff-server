@@ -10,7 +10,9 @@ from requests_oauthlib import OAuth2Session
 from rest_framework.exceptions import APIException
 
 from kerckhoff.userprofiles.models import UserProfile
-from kerckhoff.users.models import generate_username, generate_password, User as AppUser
+from kerckhoff.users.models import User as AppUser
+from kerckhoff.users.models import generate_password, generate_username
+
 from .exceptions import InvalidCodeException, NoAuthTokenException
 from .strategy import OAuthStrategy
 
@@ -26,7 +28,7 @@ class GoogleOAuthStrategy(OAuthStrategy):
     BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
     PROFILE_ENDPOINT = "https://www.googleapis.com/oauth2/v1/userinfo"
-    REDIRECT_PATH = "api-oauth/google/auth"
+    REDIRECT_PATH = "auth/google/callback"
 
     PROVIDER_KEY = "google"
 
