@@ -36,12 +36,12 @@ class Package(models.Model):
 # A PackageVersion object is a specific combination of PackageItem objects
 class PackageVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    package = models.ForeignKey(Package, on_delete=models.PROTECT)
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+ 
     #TODO 
     # Add package stateEnum for future (freeze should change state)
 
@@ -61,8 +61,6 @@ class PackageItem(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    package_version = models.ForeignKey(PackageVersion, on_delete=models.PROTECT)
+    package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
     data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default='text')
     data = JSONField(blank=True, default=dict, null=True)
-    
-    #TODO Interpret data (json) based on data_type
