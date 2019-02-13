@@ -88,7 +88,7 @@ class GoogleOAuthStrategy(OAuthStrategy):
     @classmethod
     def create_oauth2_session(cls, user: User) -> OAuth2Session:
         """ Create OAuth2 session which automatically updates the access token if it has expired """
-        profile = UserProfile.objects.get(user=user)
+        profile = user.userprofile
         auth_info: dict = profile.get_auth_information(cls.PROVIDER_KEY)
         if auth_info is None or auth_info.get("refresh_token") is None:
             raise NoAuthTokenException()

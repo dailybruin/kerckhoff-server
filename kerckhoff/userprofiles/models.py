@@ -57,7 +57,7 @@ class UserProfile(models.Model):
             self.auth_data[provider] = auth_info
         else:
             assert isinstance(current_auth_info, dict)
-            self.auth_data[provider] = current_auth_info.update(auth_info)
+            current_auth_info.update(auth_info)
         self.save()
 
 
