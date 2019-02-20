@@ -23,6 +23,7 @@ class Common(Configuration):
         "rest_framework.authtoken",  # token authentication
         "django_filters",  # for filtering rest endpoints
         "rolepermissions",  # roles and permissions
+        "corsheaders",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
@@ -32,7 +33,8 @@ class Common(Configuration):
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
     MIDDLEWARE = (
         "django.middleware.security.SecurityMiddleware",
-        'whitenoise.middleware.WhiteNoiseMiddleware',
+        "corsheaders.middleware.CorsMiddleware",
+        "whitenoise.middleware.WhiteNoiseMiddleware",
         "django.contrib.sessions.middleware.SessionMiddleware",
         "django.middleware.common.CommonMiddleware",
         "django.middleware.csrf.CsrfViewMiddleware",
@@ -50,6 +52,9 @@ class Common(Configuration):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
     ADMINS = (("Author", "hongee.tc@gmail.com"),)
+
+    # CORS
+    CORS_ORIGIN_ALLOW_ALL = True
 
     # Postgres
     DATABASES = {
