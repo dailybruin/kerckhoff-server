@@ -29,9 +29,17 @@ Markdown = "==3.0.1"
 factory_boy = "==2.11.1"
 django-role-permissions = "*"
 pillow = "*"
+requests-oauthlib = "*"
+requests = "*"
+coreapi = "*"
+pygments = "*"
+drf-nested-routers = "*"
+whitenoise = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 black = "==18.9b0"
+pre-commit = "*"
 
 [requires]
 python_version = "3.7"
