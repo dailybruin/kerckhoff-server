@@ -62,5 +62,7 @@ class PackageItem(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
-    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default='text')
-    data = JSONField(blank=True, default=dict, null=True)
+    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
+    data = JSONField(blank=True, default=dict)
+    file_name = models.CharField(max_length=64)
+    mime_types = models.CharField(max_length=64)
