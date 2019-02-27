@@ -26,4 +26,4 @@ class Local(Common):
     EMAIL_PORT = 1025
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-    SITE_HOST = "http://localhost:8000/"
+    SITE_HOST = "http://localhost:3000/"
