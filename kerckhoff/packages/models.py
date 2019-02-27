@@ -86,27 +86,49 @@ class Package(models.Model):
     # Versioning
     latest_version = models.ForeignKey('PackageVersion', related_name='versions', on_delete=models.CASCADE, null=True,
                                        blank=True)
+    def __str__(self):
+        return self.slug
 
     class Meta:
         unique_together = ('package_set', 'slug',)
 
-    def __str__(self):
-        return self.slug
-
+# Snapshot of a Package instance at a particular time
+# A PackageVersion object is a specific combination of PackageItem objects
 
 class PackageVersion(models.Model):
     """
     Snapshot of a Package instance at a particular time
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    package = models.ForeignKey(Package, on_delete=models.PROTECT)
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     def __str__(self):
-        return self.slug
+        return self.slug    
 
-    # TODO
     # Add package stateEnum for future (freeze should change state)
+
+class PackageItem(models.Model):   
+    TEXT = 'txt'
+    AML = 'aml'
+    IMAGE = 'img'
+    MARKDOWN = 'mdn'
+    SPREADSHEET = 'xls'
+    
+    DTYPE_CHOICES = (
+        (TEXT, "TEXT"),
+        (AML, "ARCHIEML"),
+        (IMAGE, "IMAGE"),
+        (MARKDOWN, "MARKDOWN"),
+        (SPREADSHEET, "SPREADSHEET"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
+    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
+    data = JSONField(blank=True, default=dict)
+    file_name = models.CharField(max_length=64)
+    mime_types = models.CharField(max_length=64)
