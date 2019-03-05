@@ -6,14 +6,19 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import RegexValidator
+from django.utils.timezone import now
+
 from django.db import models
 from kerckhoff.packages.exceptions import GoogleDriveNotConfiguredException
 from kerckhoff.packages.operations.google_drive import GoogleDriveOperations
-from kerckhoff.packages.operations.models import (GoogleDriveFile,
-                                                  GoogleDriveFileSerializer,
-                                                  GoogleDriveImageFile,
-                                                  GoogleDriveImageFileSerializer)
+from kerckhoff.packages.operations.models import (
+    GoogleDriveFile,
+    GoogleDriveFileSerializer,
+    GoogleDriveImageFile,
+    GoogleDriveImageFileSerializer,
+)
 from kerckhoff.users.models import User as AppUser
+
 
 User: AppUser = get_user_model()
 
@@ -25,6 +30,7 @@ validate_slug_with_dots = RegexValidator(
 )
 
 GOOGLE_DRIVE_META_KEY = "google_drive"
+
 
 class GoogleDriveMeta(NamedTuple):
     folder_id: str
@@ -91,8 +97,14 @@ class Package(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Versioning
-    latest_version = models.ForeignKey('PackageVersion', related_name='versions', on_delete=models.CASCADE, null=True,
-                                       blank=True)
+    latest_version = models.ForeignKey(
+        "PackageVersion",
+        related_name="versions",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
     def __str__(self):
         return self.slug
 
@@ -112,7 +124,7 @@ class Package(models.Model):
 
     def fetch_cache(self):
         ops = GoogleDriveOperations(self.created_by)
-        items = ops.list_folder(self.get_or_create_gdrive_meta().folder_id)
+        items, _ = ops.list_folder(self.get_or_create_gdrive_meta().folder_id)
 
         # Images / Media
         images_raw = ops.filter_items(items, GoogleDriveOperations.FilterMethod.IMAGES)
@@ -126,9 +138,13 @@ class Package(models.Model):
             GoogleDriveFile(content_file) for content_file in content_files_raw
         ]
 
-        # TODO: further process
+        to_update: List[GoogleDriveFile] = images + content_files
 
-        self.cached = images + content_files
+        as_json = [i.to_json() for i in to_update]
+
+        # TODO: further process
+        self.last_fetched_date = now()
+        self.cached = as_json
         self.save()
 
 
@@ -145,19 +161,20 @@ class PackageVersion(models.Model):
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
-        return self.slug    
+        return self.slug
 
     # Add package stateEnum for future (freeze should change state)
 
-class PackageItem(models.Model):   
-    TEXT = 'txt'
-    AML = 'aml'
-    IMAGE = 'img'
-    MARKDOWN = 'mdn'
-    SPREADSHEET = 'xls'
-    
+
+class PackageItem(models.Model):
+    TEXT = "txt"
+    AML = "aml"
+    IMAGE = "img"
+    MARKDOWN = "mdn"
+    SPREADSHEET = "xls"
+
     DTYPE_CHOICES = (
         (TEXT, "TEXT"),
         (AML, "ARCHIEML"),

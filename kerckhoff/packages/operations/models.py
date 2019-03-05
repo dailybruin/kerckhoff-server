@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from datetime import datetime
 from typing import Optional
+from django.utils.dateparse import parse_datetime
 
 
 class GoogleDriveFile:
@@ -13,6 +14,9 @@ class GoogleDriveFile:
     last_modified_date: datetime
     _underlying: dict
 
+    def to_json(self) -> dict:
+        return GoogleDriveFileSerializer(self).data
+
     def __init__(self, underlying: dict):
         self._underlying = underlying
         self.drive_id = underlying["id"]
@@ -20,7 +24,7 @@ class GoogleDriveFile:
         self.mimeType = underlying["mimeType"]
         self.selfLink = underlying["selfLink"]
         self.altLink = underlying["alternateLink"]
-        self.last_modified_date = datetime.fromisoformat(underlying["modifiedDate"])
+        self.last_modified_date = parse_datetime(underlying["modifiedDate"])
         self.last_modified_by = underlying["lastModifyingUser"]["emailAddress"]
 
 
@@ -28,6 +32,9 @@ class GoogleDriveImageFile(GoogleDriveFile):
     thumbnail_link: str
     src_large: Optional[str]
     src_medium: Optional[str]
+
+    def to_json(self) -> dict:
+        return GoogleDriveImageFileSerializer(self).data
 
     def __init__(self, underlying: dict):
         super().__init__(underlying)
@@ -39,9 +46,9 @@ class GoogleDriveFileSerializer(serializers.Serializer):
     title = serializers.CharField()
     mimeType = serializers.CharField()
     selfLink = serializers.URLField()
-    altLink = serializers.URLField(source="alternateLink")
-    last_modified_by = serializers.EmailField(source="lastModifyingUser.emailAddress")
-    last_modified_date = serializers.DateTimeField(source="modifiedDate")
+    altLink = serializers.URLField()
+    last_modified_by = serializers.EmailField()
+    last_modified_date = serializers.DateTimeField()
     # #_underlying = serializers.JSONField(source="*")
     #
     # def create(self, validated_data):

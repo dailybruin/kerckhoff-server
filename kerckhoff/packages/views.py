@@ -8,6 +8,9 @@ from .models import PackageSet, Package
 from .serializers import PackageSetSerializer, PackageSerializer
 
 
+slug_with_dots = "[-a-zA-Z0-9_.]+"
+
+
 class PackageSetViewSet(
     mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
 ):
@@ -19,6 +22,7 @@ class PackageSetViewSet(
     serializer_class = PackageSetSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
+    lookup_value_regex = slug_with_dots
 
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def sync_gdrive(self, request, slug):
@@ -43,6 +47,7 @@ class PackageSetCreateAndListViewSet(
     serializer_class = PackageSetSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
+    lookup_value_regex = slug_with_dots
 
 
 class PackageViewSet(
@@ -58,12 +63,13 @@ class PackageViewSet(
     serializer_class = PackageSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
+    lookup_value_regex = slug_with_dots
 
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def preview(self, request, **kwargs):
         package = self.get_object()
         package.fetch_cache()
-        serializer = self.get_serializer(package)
+        serializer = PackageSerializer(package, many=False)
         return Response(serializer.data)
 
 
@@ -84,3 +90,4 @@ class PackageCreateAndListViewSet(
     serializer_class = PackageSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
+    lookup_value_regex = slug_with_dots
