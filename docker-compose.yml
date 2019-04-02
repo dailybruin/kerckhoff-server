@@ -5,8 +5,9 @@ services:
     image: postgres:9.6
   web:
     restart: always
-    environment:
-      - DJANGO_SECRET_KEY=local
+    env_file:
+      - .env
+      - .secrets
     image: web
     build: ./
     command: >
@@ -19,6 +20,8 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+  redis:
+    image: redis:5-alpine
   # documentation:
   #   restart: always
   #   build: ./

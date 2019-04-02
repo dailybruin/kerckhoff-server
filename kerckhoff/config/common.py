@@ -32,6 +32,7 @@ class Common(Configuration):
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
     MIDDLEWARE = (
         "django.middleware.security.SecurityMiddleware",
+        'whitenoise.middleware.WhiteNoiseMiddleware',
         "django.contrib.sessions.middleware.SessionMiddleware",
         "django.middleware.common.CommonMiddleware",
         "django.middleware.csrf.CsrfViewMiddleware",
@@ -56,6 +57,13 @@ class Common(Configuration):
             default="postgres://postgres:@postgres:5432/postgres",
             conn_max_age=int(os.getenv("POSTGRES_CONN_MAX_AGE", 600)),
         )
+    }
+
+    CACHE = {
+        "default": {
+            "BACKEND": "redis_cache.RedisCache",
+            "LOCATION": os.getenv("CACHE_HOST"),
+        }
     }
 
     # General
@@ -178,4 +186,18 @@ class Common(Configuration):
             "rest_framework.authentication.SessionAuthentication",
             "rest_framework.authentication.TokenAuthentication",
         ),
+    }
+
+    # OAuth
+    GOOGLE_OAUTH = {
+        "CLIENT_ID": os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
+        "CLIENT_SECRET": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+        "USER_DOMAIN": os.getenv("USER_DOMAIN", None),
+        # This is the `hd` argument passed in when authorizing against Google, defaults to None
+        "SCOPES": [
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.file",
+        ],
     }
