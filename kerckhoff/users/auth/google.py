@@ -3,13 +3,12 @@ from typing import Tuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.utils import timezone
+from django.utils import timezone, dateparse
 from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from requests import HTTPError
 from requests_oauthlib import OAuth2Session
 from rest_framework.exceptions import APIException
 
-from kerckhoff.userprofiles.models import UserProfile
 from kerckhoff.users.models import User as AppUser
 from kerckhoff.users.models import generate_password, generate_username
 
@@ -73,14 +72,17 @@ class GoogleOAuthStrategy(OAuthStrategy):
             current_user = self.register(profile)
             register = True
 
-        current_user.userprofile.update_auth_information(self.PROVIDER_KEY, access_token)
+        current_user.userprofile.update_auth_information(
+            self.PROVIDER_KEY, access_token
+        )
         return current_user, register
 
     def register(self, profile: dict, **kwargs) -> AppUser:
         new_user: AppUser = User.objects.create_user(
             username=generate_username(profile["given_name"], profile["family_name"]),
             password=generate_password(),
-            email=profile["email"])
+            email=profile["email"],
+        )
 
         new_user.first_name = profile["given_name"]
         new_user.last_name = profile["family_name"]
@@ -96,27 +98,29 @@ class GoogleOAuthStrategy(OAuthStrategy):
             raise NoAuthTokenException()
 
         def token_updater(token: dict):
-            token['expires_at'] = timezone.now()
+            token["expires_at"] = timezone.now()
             profile.update_auth_information(cls.PROVIDER_KEY, token)
 
         client_id = settings.GOOGLE_OAUTH["CLIENT_ID"]
         client_secret = settings.GOOGLE_OAUTH["CLIENT_SECRET"]
 
-        extra = {
-            'client_id': client_id,
-            'client_secret': client_secret
-        }
-
-        expires_in = auth_info["expires_at"] - timezone.now().timestamp()
+        extra = {"client_id": client_id, "client_secret": client_secret}
+        expired_time = dateparse.parse_datetime(auth_info["expires_at"]).timestamp()
+        expires_in = expired_time - timezone.now().timestamp()
         token = {
-            'access_token': auth_info["access_token"],
-            'refresh_token': auth_info["refresh_token"],
-            'token_type': 'Bearer',
-            'expires_in': expires_in
+            "access_token": auth_info["access_token"],
+            "refresh_token": auth_info["refresh_token"],
+            "token_type": "Bearer",
+            "expires_in": expires_in,
         }
 
-        return OAuth2Session(client_id, token=token, auto_refresh_kwargs=extra,
-                             auto_refresh_url=cls.TOKEN_URL, token_updater=token_updater)
+        return OAuth2Session(
+            client_id,
+            token=token,
+            auto_refresh_kwargs=extra,
+            auto_refresh_url=cls.TOKEN_URL,
+            token_updater=token_updater,
+        )
 
     def _get_profile(self) -> dict:
         try:

@@ -1,24 +1,32 @@
-import uuid
-from typing import NamedTuple, List
 import re
+import uuid
+from typing import List, NamedTuple
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import RegexValidator
-from django.db import models
-from django.contrib.auth import get_user_model
+from django.utils.timezone import now
 
+from django.db import models
 from kerckhoff.packages.exceptions import GoogleDriveNotConfiguredException
 from kerckhoff.packages.operations.google_drive import GoogleDriveOperations
+from kerckhoff.packages.operations.models import (
+    GoogleDriveFile,
+    GoogleDriveFileSerializer,
+    GoogleDriveImageFile,
+    GoogleDriveImageFileSerializer,
+)
 from kerckhoff.users.models import User as AppUser
+
 
 User: AppUser = get_user_model()
 
-slug_with_dots_re = re.compile(r'^[-a-zA-Z0-9_.]+\Z')
+slug_with_dots_re = re.compile(r"^[-a-zA-Z0-9_.]+\Z")
 validate_slug_with_dots = RegexValidator(
     slug_with_dots_re,
     "Enter a valid 'slug' consisting of letters, dots, numbers, underscores or hyphens.",
-    'invalid'
+    "invalid",
 )
 
 GOOGLE_DRIVE_META_KEY = "google_drive"
@@ -60,13 +68,18 @@ class PackageSet(models.Model):
         created_packages = []
         for folder in folders:
             slug = folder["title"]
-            package, created = Package.objects.get_or_create(slug=slug, package_set=self, defaults={
-                "created_by": self.created_by,
-                "metadata": {
-                    GOOGLE_DRIVE_META_KEY: GoogleDriveMeta(folder_id=folder["id"],
-                                                           folder_url=folder["alternateLink"])._asdict()
-                }
-            })
+            package, created = Package.objects.get_or_create(
+                slug=slug,
+                package_set=self,
+                defaults={
+                    "created_by": self.created_by,
+                    "metadata": {
+                        GOOGLE_DRIVE_META_KEY: GoogleDriveMeta(
+                            folder_id=folder["id"], folder_url=folder["alternateLink"]
+                        )._asdict()
+                    },
+                },
+            )
             if created:
                 created_packages.append(package)
         return created_packages
@@ -74,7 +87,7 @@ class PackageSet(models.Model):
 
 class Package(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    slug = models.CharField(max_length=64, validators=[validate_slug_with_dots, ])
+    slug = models.CharField(max_length=64, validators=[validate_slug_with_dots])
     package_set = models.ForeignKey(PackageSet, on_delete=models.PROTECT)
     metadata = JSONField(blank=True, default=dict, null=True)
     cached = JSONField(blank=True, default=dict, null=True)
@@ -84,21 +97,64 @@ class Package(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Versioning
-    latest_version = models.ForeignKey('PackageVersion', related_name='versions', on_delete=models.CASCADE, null=True,
-                                       blank=True)
+    latest_version = models.ForeignKey(
+        "PackageVersion",
+        related_name="versions",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
     def __str__(self):
         return self.slug
 
     class Meta:
-        unique_together = ('package_set', 'slug',)
+        unique_together = ("package_set", "slug")
+
+    def __str__(self):
+        return self.slug
+
+    def get_or_create_gdrive_meta(self) -> GoogleDriveMeta:
+        data = self.metadata.get(GOOGLE_DRIVE_META_KEY)
+        if data is None:
+            data = GoogleDriveMeta("", "")._asdict()
+            self.metadata[GOOGLE_DRIVE_META_KEY] = data
+            self.save()
+        return GoogleDriveMeta(**data)
+
+    def fetch_cache(self):
+        ops = GoogleDriveOperations(self.created_by)
+        items, _ = ops.list_folder(self.get_or_create_gdrive_meta().folder_id)
+
+        # Images / Media
+        images_raw = ops.filter_items(items, GoogleDriveOperations.FilterMethod.IMAGES)
+        images = [GoogleDriveImageFile(image) for image in images_raw]
+
+        # Content / Data Files
+        content_files_raw = ops.filter_items(
+            items, GoogleDriveOperations.FilterMethod.EXTENSION, ("aml", "md", "txt")
+        )
+        content_files = [
+            GoogleDriveFile(content_file) for content_file in content_files_raw
+        ]
+
+        to_update: List[GoogleDriveFile] = images + content_files
+
+        as_json = [i.to_json() for i in to_update]
+
+        # TODO: further process
+        self.last_fetched_date = now()
+        self.cached = as_json
+        self.save()
+
 
 # Snapshot of a Package instance at a particular time
 # A PackageVersion object is a specific combination of PackageItem objects
-
 class PackageVersion(models.Model):
     """
     Snapshot of a Package instance at a particular time
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.CharField(max_length=64, validators=[validate_slug_with_dots, ])
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
@@ -106,19 +162,20 @@ class PackageVersion(models.Model):
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
-        return self.slug    
+        return self.slug
 
     # Add package stateEnum for future (freeze should change state)
 
-class PackageItem(models.Model):   
-    TEXT = 'txt'
-    AML = 'aml'
-    IMAGE = 'img'
-    MARKDOWN = 'mdn'
-    SPREADSHEET = 'xls'
-    
+
+class PackageItem(models.Model):
+    TEXT = "txt"
+    AML = "aml"
+    IMAGE = "img"
+    MARKDOWN = "mdn"
+    SPREADSHEET = "xls"
+
     DTYPE_CHOICES = (
         (TEXT, "TEXT"),
         (AML, "ARCHIEML"),

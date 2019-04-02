@@ -36,6 +36,7 @@ pygments = "*"
 drf-nested-routers = "*"
 whitenoise = "*"
 django-cors-headers = "*"
+mypy = "*"
 
 [dev-packages]
 black = "==18.9b0"
