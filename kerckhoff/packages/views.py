@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
 
-from .models import PackageSet, Package
+from .models import PackageSet, Package, PackageVersion
 from .serializers import PackageSetSerializer, PackageSerializer
 
 
@@ -58,7 +58,16 @@ class PackageViewSet(
     """
 
     def get_queryset(self):
-        return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
+        package = Package.objects.filter(
+            package_set__slug=self.kwargs["package_set_slug"]
+        )
+        version_number = self.request.query_params.get("version")
+        if version_number:
+            version = PackageVersion.objects.filter(
+                package=package, id=version_number
+            )  # change this after Kai's thing
+            package.version = version
+        return package
 
     serializer_class = PackageSerializer
     permission_classes = (IsAuthenticated,)
