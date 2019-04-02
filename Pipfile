@@ -35,6 +35,7 @@ coreapi = "*"
 pygments = "*"
 drf-nested-routers = "*"
 whitenoise = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 black = "==18.9b0"

@@ -87,14 +87,24 @@ class Package(models.Model):
     latest_version = models.ForeignKey('PackageVersion', related_name='versions', on_delete=models.CASCADE, null=True,
                                        blank=True)
     def __str__(self):
+<<<<<<< HEAD
             return self.slug
+=======
+        return self.slug
+>>>>>>> 7cc8291d9beae7bdb5b820e99e01dea70e01179a
 
     class Meta:
         unique_together = ('package_set', 'slug',)
 
+<<<<<<< HEAD
     
 
 
+=======
+# Snapshot of a Package instance at a particular time
+# A PackageVersion object is a specific combination of PackageItem objects
+
+>>>>>>> 7cc8291d9beae7bdb5b820e99e01dea70e01179a
 class PackageVersion(models.Model):
     """
     Snapshot of a Package instance at a particular time
@@ -106,11 +116,18 @@ class PackageVersion(models.Model):
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 7cc8291d9beae7bdb5b820e99e01dea70e01179a
     def __str__(self):
-        return self.slug
+        return self.slug    
 
+<<<<<<< HEAD
     # TODO
+=======
+>>>>>>> 7cc8291d9beae7bdb5b820e99e01dea70e01179a
     # Add package stateEnum for future (freeze should change state)
 
 class PackageItem(models.Model):   
@@ -130,7 +147,14 @@ class PackageItem(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
+<<<<<<< HEAD
     data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default='text')
     data = JSONField(blank=True, default=dict)
     file_name = models.CharField(max_length=64)
     mime_type = models.CharField(max_length=64)
+=======
+    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
+    data = JSONField(blank=True, default=dict)
+    file_name = models.CharField(max_length=64)
+    mime_types = models.CharField(max_length=64)
+>>>>>>> 7cc8291d9beae7bdb5b820e99e01dea70e01179a
