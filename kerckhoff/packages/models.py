@@ -114,6 +114,10 @@ class Package(models.Model):
     def __str__(self):
         return self.slug
 
+    def get_version(self, number: int):
+        package_version = PackageVersion.objects.get(package=self, id=number)
+        return package_version
+
     def get_or_create_gdrive_meta(self) -> GoogleDriveMeta:
         data = self.metadata.get(GOOGLE_DRIVE_META_KEY)
         if data is None:

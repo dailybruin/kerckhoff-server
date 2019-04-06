@@ -4,8 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
 
-from .models import PackageSet, Package
-from .serializers import PackageSetSerializer, PackageSerializer
+from .models import PackageSet, Package, PackageVersion
+from .serializers import (
+    PackageSetSerializer,
+    PackageSerializer,
+    RetrievePackageSerializer,
+)
 
 
 slug_with_dots = "[-a-zA-Z0-9_.]+"
@@ -72,6 +76,14 @@ class PackageViewSet(
         serializer = PackageSerializer(package, many=False)
         return Response(serializer.data)
 
+    # @action(detail=True, serializer_class=Serializer)
+    def retrieve(self, request, **kwargs):
+        package = self.get_object()
+        version_number = request.query_params.get("version", 1)
+        serializer = RetrievePackageSerializer(
+            package, context={"version_number": version_number}
+        )
+        return Response(serializer.data)
 
 class PackageCreateAndListViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet

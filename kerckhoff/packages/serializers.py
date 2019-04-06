@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
-from .models import PackageSet, Package
+from .models import PackageSet, Package, PackageVersion
 
 from kerckhoff.users.serializers import UserSerializer
 
@@ -11,8 +11,8 @@ class PackageSetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PackageSet
-        fields = ('id', 'slug', 'metadata', 'created_by', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_by', 'created_at', 'updated_at')
+        fields = ("id", "slug", "metadata", "created_by", "created_at", "updated_at")
+        read_only_fields = ("id", "created_by", "created_at", "updated_at")
 
 
 class PackageSerializer(serializers.ModelSerializer):
@@ -21,13 +21,55 @@ class PackageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Package
-        fields = ('id', 'slug', 'package_set', 'metadata', 'cached', 'last_fetched_date', 'created_by', 'created_at',
-                  'updated_at')
+        fields = (
+            "id",
+            "slug",
+            "package_set",
+            "metadata",
+            "cached",
+            "last_fetched_date",
+            "created_by",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = (
-            'id', 'package_set', 'cached', 'last_fetched_date', 'created_by', 'created_at', 'updated_at')
+            "id",
+            "package_set",
+            "cached",
+            "last_fetched_date",
+            "created_by",
+            "created_at",
+            "updated_at",
+        )
         validators = [
             UniqueTogetherValidator(
-                queryset=Package.objects.all(),
-                fields=('slug', 'package_set')
+                queryset=Package.objects.all(), fields=("slug", "package_set")
             )
         ]
+
+
+class PackageVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PackageVersion
+        fields = (
+            "id",
+            "package",
+            "creator",
+            "version_description",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("package", "created_at")
+
+
+class RetrievePackageSerializer(PackageSerializer):
+    class Meta(PackageSerializer.Meta):
+        fields = ("package_version",) + PackageSerializer.Meta.fields
+
+    def to_representation(self, obj):
+        package = super().to_representation(obj)
+        package_version = PackageVersionSerializer(
+            self.get_version(self.context.version_number)
+        )
+        package.package_version = package_version
+        return package
