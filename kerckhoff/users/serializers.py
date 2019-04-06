@@ -20,27 +20,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         userprofile_data = validated_data.pop("userprofile")
-        userprofile = instance.userprofile
-
-        instance.first_name = validated_data.get("first_name", instance.first_name)
-        instance.last_name = validated_data.get("last_name", instance.last_name)
-        instance.save()
-
-        userprofile.title = userprofile_data.get("title", userprofile.title)
-        userprofile.profile_img = userprofile_data.get(
-            "profile_img", userprofile.profile_img
+        UserProfile.objects.filter(pk=instance.userprofile.pk).update(
+            **userprofile_data
         )
-        userprofile.description = userprofile_data.get(
-            "description", userprofile.description
-        )
-        userprofile.linkedin_url = userprofile_data.get(
-            "linkedin_url", userprofile.linkedin_url
-        )
-        userprofile.github_url = userprofile_data.get(
-            "github_url", userprofile.github_url
-        )
-        userprofile.save()
-
+        User.objects.filter(pk=instance.id).update(**validated_data)
         return instance
 
 
