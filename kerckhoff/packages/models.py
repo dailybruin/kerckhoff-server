@@ -85,52 +85,6 @@ class PackageSet(models.Model):
                 created_packages.append(package)
         return created_packages
 
-class PackageItem(models.Model):
-    TEXT = "txt"
-    AML = "aml"
-    IMAGE = "img"
-    MARKDOWN = "mdn"
-    SPREADSHEET = "xls"
-
-    DTYPE_CHOICES = (
-        (TEXT, "TEXT"),
-        (AML, "ARCHIEML"),
-        (IMAGE, "IMAGE"),
-        (MARKDOWN, "MARKDOWN"),
-        (SPREADSHEET, "SPREADSHEET"),
-    )
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
-    #TODO Smart way to log all PackageVersions containing this PackageItem? Optionally enable upstream changes to PackageVersions?
-    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
-    data = JSONField(blank=True, default=dict)
-    file_name = models.CharField(max_length=64)
-    mime_types = models.CharField(max_length=64)
-
-# Snapshot of a Package instance, defined as a collection of PackageItem objects
-class PackageVersion(models.Model):
-    """
-    Snapshot of a Package instance at a particular time
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    id_num = models.IntegerField(default=0) # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
-    slug = models.CharField(max_length=64, validators=[validate_slug_with_dots, ])
-    package = models.ForeignKey("Package", on_delete=models.CASCADE)
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    version_description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # Stores unordered list of PackageItem foreign keys 
-    package_items = PickledObjectField(default=set)
-
-    def __str__(self):
-        return self.slug
-
-    # Add package stateEnum for future (freeze should change state)    
-
 class Package(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.CharField(max_length=64, validators=[validate_slug_with_dots])
@@ -144,17 +98,12 @@ class Package(models.Model):
 
     # Versioning
     latest_version = models.ForeignKey(
-        PackageVersion,
+        "PackageVersion",
         related_name="versions",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
     )
-    # Stores orderd list of PackageVersion foreign keys, updated whenever new PackageVersion is created
-    package_versions = PickledObjectField(default=list)
-
-    def __str__(self):
-        return self.slug
 
     class Meta:
         unique_together = ("package_set", "slug")
@@ -195,10 +144,6 @@ class Package(models.Model):
         self.cached = as_json
         self.save()
 
-    def update_package_versions_list(self, pv_fk):
-        self.package_versions.append(pv_fk)
-        self.save()
-
     def create_version(self, user, change_summary, package_items_set):
         """Creates new PackageVersion object
         
@@ -207,13 +152,57 @@ class Package(models.Model):
             package_items_set {set} -- set of PackageItem ForeignKeys, TODO views to handle this?
         """
         id_num = 0
-        if len(self.package_versions) > 1:
-            id_num = len(self.package_versions) - 1
-        pv = PackageVersion(package=self, creator=user, version_description=change_summary, package_items=package_items_set, id_num=id_num)
-        pv.save()
-        self.latest_version = pv
-        self.update_package_versions_list(pv)
+        if len(self.packageversion_set.all()) > 1:
+            id_num = len(self.packageversion_set.all()) - 1
+        # Add package items
+        new_pv = self.packageversion_set.create(package=self, creator=user, version_description=change_summary, id_num=id_num)
+        for package_item in package_items_set:
+            new_pv.packageitem_set.add(package_item)
+        new_pv.save()
+        self.latest_version = new_pv
         # return 'Successfully created PackageVersion object!'
+
+# Snapshot of a Package instance, defined as a collection of PackageItem objects
+class PackageVersion(models.Model):
+    """
+    Snapshot of a Package instance at a particular time
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id_num = models.IntegerField(default=0) # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
+    slug = models.CharField(max_length=64, validators=[validate_slug_with_dots, ])
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    version_description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.slug
+
+    # Add package stateEnum for future (freeze should change state)    
+
+class PackageItem(models.Model):
+    TEXT = "txt"
+    AML = "aml"
+    IMAGE = "img"
+    MARKDOWN = "mdn"
+    SPREADSHEET = "xls"
+
+    DTYPE_CHOICES = (
+        (TEXT, "TEXT"),
+        (AML, "ARCHIEML"),
+        (IMAGE, "IMAGE"),
+        (MARKDOWN, "MARKDOWN"),
+        (SPREADSHEET, "SPREADSHEET"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    package_versions = models.ManyToManyField(PackageVersion)
+    data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
+    data = JSONField(blank=True, default=dict)
+    file_name = models.CharField(max_length=64)
+    mime_types = models.CharField(max_length=64)
 
 
 
