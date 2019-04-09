@@ -21,7 +21,6 @@ from kerckhoff.packages.operations.models import (
 )
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
-from picklefield.fields import PickledObjectField
 
 
 User: AppUser = get_user_model()
