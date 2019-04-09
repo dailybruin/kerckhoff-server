@@ -42,6 +42,9 @@ django-cors-headers = "*"
 mypy = "*"
 django-picklefield = "*"
 
+bleach = "*"
+html5lib = "*"
+python-frontmatter = "*"
 
 [dev-packages]
 

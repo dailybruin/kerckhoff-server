@@ -16,7 +16,10 @@ from kerckhoff.packages.operations.models import (
     GoogleDriveFileSerializer,
     GoogleDriveImageFile,
     GoogleDriveImageFileSerializer,
+    GoogleDriveTextFile,
+    FORMAT_MD,
 )
+from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 from picklefield.fields import PickledObjectField
 
@@ -105,6 +108,9 @@ class Package(models.Model):
         blank=True,
     )
 
+    def __str__(self):
+        return self.package_set.slug + "/" + self.slug
+
     class Meta:
         unique_together = ("package_set", "slug")
 
@@ -131,9 +137,25 @@ class Package(models.Model):
         content_files_raw = ops.filter_items(
             items, GoogleDriveOperations.FilterMethod.EXTENSION, ("aml", "md", "txt")
         )
-        content_files = [
-            GoogleDriveFile(content_file) for content_file in content_files_raw
+        content_files: List[GoogleDriveTextFile] = [
+            GoogleDriveTextFile(content_file) for content_file in content_files_raw
         ]
+
+        # Export content files as HTML and plaintext
+        for file in content_files:
+            if file.format != FORMAT_MD:
+                # Markdown does not support HTML format
+                file._is_rich = True
+                file.parse_content(
+                    GoogleDocHTMLCleaner.clean(ops.download_item(file).text),
+                    is_rich=True,
+                )
+
+            file._is_rich = False
+            file.parse_content(
+                ops.download_item(file).content.decode("utf-8-sig").encode("utf-8"),
+                is_rich=False,
+            )
 
         to_update: List[GoogleDriveFile] = images + content_files
 

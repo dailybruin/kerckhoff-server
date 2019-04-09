@@ -1,11 +1,13 @@
 from django.contrib.auth import get_user_model
 from requests_oauthlib import OAuth2Session
 from requests.exceptions import RequestException
+from requests import Response
 from typing import Tuple, Optional, List
 from enum import Enum
 import logging
 
 from kerckhoff.packages.operations.exceptions import OperationFailed
+from kerckhoff.packages.operations.models import GoogleDriveTextFile, GoogleDriveFile
 from kerckhoff.users.auth.google import GoogleOAuthStrategy
 
 from kerckhoff.users.models import User as AppUser
@@ -91,7 +93,13 @@ class GoogleDriveOperations:
 
         return results, next_token
 
-    def _fetch_item(self, gdrive_id: str) -> Optional[dict]:
+    def download_item(self, gdrive_item: GoogleDriveFile) -> Response:
+        """Downloads the contents of the provided Google Drive file, returns a Requests response"""
+        logger.debug(f"Downloading {gdrive_item.title}")
+        res = self.oauth_session.get(gdrive_item.get_download_link(), stream=True)
+        return res
+
+    def _fetch_item_metadata(self, gdrive_id: str) -> Optional[dict]:
         """Calls the API to get a single item
         """
         res = self.oauth_session.get(self._GOOGLE_API_PREFIX + f"/v2/files/{gdrive_id}")
