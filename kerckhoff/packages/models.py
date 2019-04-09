@@ -204,7 +204,3 @@ class PackageItem(models.Model):
     file_name = models.CharField(max_length=64)
     mime_types = models.CharField(max_length=64)
 
-
-
-
-
