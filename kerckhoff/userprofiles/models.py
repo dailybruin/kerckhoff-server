@@ -15,9 +15,11 @@ class UserProfile(models.Model):
     """The additional profile information for a user
     """
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True
+    )
     title = models.CharField(max_length=100, blank=True, default="Contributor")
-    profile_img = models.ImageField(upload_to="profile/imgs/", null=True)
+    profile_img = models.ImageField(upload_to="profile/imgs/", blank=True, null=True)
     description = models.CharField(max_length=500, blank=True, default="")
     linkedin_url = models.URLField(blank=True, default="")
     github_url = models.URLField(blank=True, default="")

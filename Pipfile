@@ -37,6 +37,9 @@ drf-nested-routers = "*"
 whitenoise = "*"
 django-cors-headers = "*"
 mypy = "*"
+bleach = "*"
+html5lib = "*"
+python-frontmatter = "*"
 
 [dev-packages]
 black = "==18.9b0"

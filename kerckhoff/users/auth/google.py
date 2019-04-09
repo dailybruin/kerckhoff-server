@@ -98,7 +98,7 @@ class GoogleOAuthStrategy(OAuthStrategy):
             raise NoAuthTokenException()
 
         def token_updater(token: dict):
-            token["expires_at"] = dateparse.parse_datetime(timezone.now()).timestamp()
+            token["expires_at"] = timezone.now().timestamp()
             profile.update_auth_information(cls.PROVIDER_KEY, token)
 
         client_id = settings.GOOGLE_OAUTH["CLIENT_ID"]
