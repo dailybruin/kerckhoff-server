@@ -87,6 +87,7 @@ class PackageSet(models.Model):
                 created_packages.append(package)
         return created_packages
 
+
 class Package(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.CharField(max_length=64, validators=[validate_slug_with_dots])
@@ -176,12 +177,18 @@ class Package(models.Model):
         if self.packageversion_set.count() > 1:
             id_num = self.packageversion_set.count() - 1
         # Add package items
-        new_pv = self.packageversion_set.create(package=self, creator=user, version_description=change_summary, id_num=id_num)
+        new_pv = self.packageversion_set.create(
+            package=self,
+            creator=user,
+            version_description=change_summary,
+            id_num=id_num,
+        )
         for package_item in package_items_set:
             new_pv.packageitem_set.add(package_item)
         new_pv.save()
         self.latest_version = new_pv
         # return 'Successfully created PackageVersion object!'
+
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
@@ -190,8 +197,10 @@ class PackageVersion(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    id_num = models.IntegerField(default=0) # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
-    slug = models.CharField(max_length=64, validators=[validate_slug_with_dots, ])
+    id_num = models.IntegerField(
+        default=0
+    )  # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
+    title = models.CharField(max_length=64)
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     version_description = models.TextField(blank=True)
@@ -201,7 +210,8 @@ class PackageVersion(models.Model):
     def __str__(self):
         return self.slug
 
-    # Add package stateEnum for future (freeze should change state)    
+    # Add package stateEnum for future (freeze should change state)
+
 
 class PackageItem(models.Model):
     TEXT = "txt"
@@ -224,4 +234,3 @@ class PackageItem(models.Model):
     data = JSONField(blank=True, default=dict)
     file_name = models.CharField(max_length=64)
     mime_types = models.CharField(max_length=64)
-
