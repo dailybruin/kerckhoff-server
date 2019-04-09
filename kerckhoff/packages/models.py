@@ -173,8 +173,8 @@ class Package(models.Model):
             package_items_set {set} -- set of PackageItem ForeignKeys, TODO views to handle this?
         """
         id_num = 0
-        if len(self.packageversion_set.all()) > 1:
-            id_num = len(self.packageversion_set.all()) - 1
+        if self.packageversion_set.count() > 1:
+            id_num = self.packageversion_set.count() - 1
         # Add package items
         new_pv = self.packageversion_set.create(package=self, creator=user, version_description=change_summary, id_num=id_num)
         for package_item in package_items_set:
