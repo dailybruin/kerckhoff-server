@@ -28,6 +28,7 @@ class Common(Configuration):
         "kerckhoff.users",
         "kerckhoff.userprofiles",
         "kerckhoff.packages",
+        "kerckhoff.comments",
     )
 
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
