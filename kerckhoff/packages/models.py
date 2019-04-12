@@ -16,7 +16,10 @@ from kerckhoff.packages.operations.models import (
     GoogleDriveFileSerializer,
     GoogleDriveImageFile,
     GoogleDriveImageFileSerializer,
+    GoogleDriveTextFile,
+    FORMAT_MD,
 )
+from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 
 
@@ -106,7 +109,7 @@ class Package(models.Model):
     )
 
     def __str__(self):
-        return self.slug
+        return self.package_set.slug + "/" + self.slug
 
     class Meta:
         unique_together = ("package_set", "slug")
@@ -138,9 +141,25 @@ class Package(models.Model):
         content_files_raw = ops.filter_items(
             items, GoogleDriveOperations.FilterMethod.EXTENSION, ("aml", "md", "txt")
         )
-        content_files = [
-            GoogleDriveFile(content_file) for content_file in content_files_raw
+        content_files: List[GoogleDriveTextFile] = [
+            GoogleDriveTextFile(content_file) for content_file in content_files_raw
         ]
+
+        # Export content files as HTML and plaintext
+        for file in content_files:
+            if file.format != FORMAT_MD:
+                # Markdown does not support HTML format
+                file._is_rich = True
+                file.parse_content(
+                    GoogleDocHTMLCleaner.clean(ops.download_item(file).text),
+                    is_rich=True,
+                )
+
+            file._is_rich = False
+            file.parse_content(
+                ops.download_item(file).content.decode("utf-8-sig").encode("utf-8"),
+                is_rich=False,
+            )
 
         to_update: List[GoogleDriveFile] = images + content_files
 
@@ -151,15 +170,41 @@ class Package(models.Model):
         self.cached = as_json
         self.save()
 
+    def create_version(self, user, change_summary, package_items_set):
+        """Creates new PackageVersion object
+        
+        Arguments:
+            user {User} -- User object, required argument
+            package_items_set {set} -- set of PackageItem ForeignKeys, TODO views to handle this?
+        """
+        id_num = 0
+        if self.packageversion_set.count() > 1:
+            id_num = self.packageversion_set.count() - 1
+        # Add package items
+        new_pv = self.packageversion_set.create(
+            package=self,
+            creator=user,
+            version_description=change_summary,
+            id_num=id_num,
+        )
+        for package_item in package_items_set:
+            new_pv.packageitem_set.add(package_item)
+        new_pv.save()
+        self.latest_version = new_pv
+        # return 'Successfully created PackageVersion object!'
 
-# Snapshot of a Package instance at a particular time
-# A PackageVersion object is a specific combination of PackageItem objects
+
+# Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
     """
     Snapshot of a Package instance at a particular time
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id_num = models.IntegerField(
+        default=0
+    )  # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
+    title = models.CharField(max_length=64)
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     version_description = models.TextField(blank=True)
@@ -188,7 +233,7 @@ class PackageItem(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    package_version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
+    package_versions = models.ManyToManyField(PackageVersion)
     data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
     data = JSONField(blank=True, default=dict)
     file_name = models.CharField(max_length=64)

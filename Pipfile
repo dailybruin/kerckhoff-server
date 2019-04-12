@@ -1,9 +1,12 @@
 [[source]]
+
 url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+
 [packages]
+
 pytz = "==2018.9"
 django-configurations = "==2.1"
 gunicorn = "==19.9.0"
@@ -28,19 +31,26 @@ Django = "==2.1.5"
 Markdown = "==3.0.1"
 factory_boy = "==2.11.1"
 django-role-permissions = "*"
-pillow = "*"
+Pillow = "*"
 requests-oauthlib = "*"
 requests = "*"
 coreapi = "*"
-pygments = "*"
+Pygments = "*"
 drf-nested-routers = "*"
 whitenoise = "*"
 django-cors-headers = "*"
 mypy = "*"
+bleach = "*"
+"html5lib" = "*"
+python-frontmatter = "*"
+
 
 [dev-packages]
+
 black = "==18.9b0"
 pre-commit = "*"
 
+
 [requires]
+
 python_version = "3.7"

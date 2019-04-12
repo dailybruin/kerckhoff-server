@@ -98,14 +98,14 @@ class GoogleOAuthStrategy(OAuthStrategy):
             raise NoAuthTokenException()
 
         def token_updater(token: dict):
-            token["expires_at"] = timezone.now()
+            token["expires_at"] = timezone.now().timestamp()
             profile.update_auth_information(cls.PROVIDER_KEY, token)
 
         client_id = settings.GOOGLE_OAUTH["CLIENT_ID"]
         client_secret = settings.GOOGLE_OAUTH["CLIENT_SECRET"]
 
         extra = {"client_id": client_id, "client_secret": client_secret}
-        expired_time = dateparse.parse_datetime(auth_info["expires_at"]).timestamp()
+        expired_time = auth_info["expires_at"]
         expires_in = expired_time - timezone.now().timestamp()
         token = {
             "access_token": auth_info["access_token"],
