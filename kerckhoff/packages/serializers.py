@@ -63,13 +63,12 @@ class PackageVersionSerializer(serializers.ModelSerializer):
 
 
 class RetrievePackageSerializer(PackageSerializer):
-    class Meta(PackageSerializer.Meta):
-        fields = ("package_version",) + PackageSerializer.Meta.fields
+    # class Meta(PackageSerializer.Meta):
+    #     fields = ("package_version",) + PackageSerializer.Meta.fields
 
     def to_representation(self, obj):
         package = super().to_representation(obj)
-        package_version = PackageVersionSerializer(
-            self.get_version(self.context.version_number)
-        )
-        package.package_version = package_version
+        package_version = obj.get_version(self.context.get("version_number"))
+        if package_version is not None:
+            package["package_version"] = PackageVersionSerializer(package_version).data
         return package

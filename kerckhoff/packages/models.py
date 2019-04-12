@@ -118,7 +118,10 @@ class Package(models.Model):
         return self.slug
 
     def get_version(self, number: int):
-        package_version = PackageVersion.objects.get(package=self, id=number)
+        try:
+            package_version = PackageVersion.objects.get(package=self, id_num=number)
+        except PackageVersion.DoesNotExist:
+            package_version = None
         return package_version
 
     def get_or_create_gdrive_meta(self) -> GoogleDriveMeta:
@@ -172,7 +175,7 @@ class Package(models.Model):
 
     def create_version(self, user, change_summary, package_items_set):
         """Creates new PackageVersion object
-        
+
         Arguments:
             user {User} -- User object, required argument
             package_items_set {set} -- set of PackageItem ForeignKeys, TODO views to handle this?
