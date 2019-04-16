@@ -81,7 +81,6 @@ class PackageViewSet(
         serializer = PackageSerializer(package, many=False)
         return Response(serializer.data)
 
-    # @action(detail=True, serializer_class=Serializer)
     def retrieve(self, request, **kwargs):
         package = self.get_object()
         version_number = request.query_params.get("version", 1)
