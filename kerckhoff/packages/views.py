@@ -8,7 +8,7 @@ from .models import PackageSet, Package
 from .serializers import PackageSetSerializer, PackageSerializer
 
 
-slug_with_dots = "[-a-zA-Z0-9_.]+"
+slug_with_dots = "[-a-zA-Z0-9_.&]+"
 
 
 class PackageSetViewSet(
