@@ -27,16 +27,10 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = (
             "id",
-            "slug",
             "package",
             "created_by",
             "created_at",
             "updated_at",
             "comment_content",
         )
-        read_only_fields = ("id", "slug", "package", "created_by", "created_at")
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Comment.objects.all(), fields=("slug", "package")
-            )
-        ]
+        read_only_fields = ("id", "package", "created_by", "created_at")
