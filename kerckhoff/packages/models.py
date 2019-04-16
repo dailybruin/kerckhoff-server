@@ -114,9 +114,6 @@ class Package(models.Model):
     class Meta:
         unique_together = ("package_set", "slug")
 
-    def __str__(self):
-        return self.slug
-
     def get_or_create_gdrive_meta(self) -> GoogleDriveMeta:
         data = self.metadata.get(GOOGLE_DRIVE_META_KEY)
         if data is None:
@@ -208,7 +205,7 @@ class PackageVersion(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.slug
+        return self.package.slug + "/" + self.id_num
 
     # Add package stateEnum for future (freeze should change state)
 
