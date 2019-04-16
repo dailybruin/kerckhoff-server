@@ -205,7 +205,7 @@ class PackageVersion(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.package.slug + "/" + self.id_num
+        return self.package.slug + "/" + str(self.id_num)
 
     # Add package stateEnum for future (freeze should change state)
 
