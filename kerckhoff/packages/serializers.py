@@ -64,6 +64,8 @@ class PackageVersionSerializer(serializers.ModelSerializer):
 
 
 class RetrievePackageSerializer(PackageSerializer):
+    package_version = PackageVersionSerializer()
+
     def to_representation(self, obj):
         package = super().to_representation(obj)
         package_version = obj.get_version(self.context.get("version_number"))
