@@ -1,4 +1,4 @@
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
@@ -8,7 +8,7 @@ from .models import PackageSet, Package
 from .serializers import PackageSetSerializer, PackageSerializer
 
 
-slug_with_dots = "[-a-zA-Z0-9_.]+"
+slug_with_dots = "[-a-zA-Z0-9_.&]+"
 
 
 class PackageSetViewSet(
@@ -26,6 +26,9 @@ class PackageSetViewSet(
 
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def sync_gdrive(self, request, slug):
+        """
+        Imports all packages from the Google Drive folder of a package set
+        """
         package_set = self.get_object()
         new_packages = package_set.get_new_packages_from_gdrive()
         serializer = PackageSerializer(new_packages, many=True)
@@ -48,6 +51,8 @@ class PackageSetCreateAndListViewSet(
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
     lookup_value_regex = slug_with_dots
+    filter_backends = (filters.OrderingFilter,)
+    ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
 
 
 class PackageViewSet(
@@ -91,3 +96,5 @@ class PackageCreateAndListViewSet(
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
     lookup_value_regex = slug_with_dots
+    filter_backends = (filters.OrderingFilter,)
+    ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
