@@ -114,9 +114,6 @@ class Package(models.Model):
     class Meta:
         unique_together = ("package_set", "slug")
 
-    def __str__(self):
-        return self.slug
-
     def get_version(self, number: int):
         try:
             package_version = PackageVersion.objects.get(package=self, id_num=number)
@@ -215,7 +212,7 @@ class PackageVersion(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.slug
+        return self.package.slug + "/" + str(self.id_num)
 
     # Add package stateEnum for future (freeze should change state)
 
