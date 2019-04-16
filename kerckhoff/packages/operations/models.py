@@ -48,15 +48,23 @@ class GoogleDriveFile:
     def to_json(self) -> dict:
         return GoogleDriveFileSerializer(self).data
 
-    def __init__(self, underlying: dict):
+    def __init__(self, underlying: dict, from_serialized=False):
+        self._from_serialized = from_serialized
+        if from_serialized:
+            self.drive_id = underlying["drive_id"]
+            self.altLink = underlying["altLink"]
+            self.last_modified_date = underlying["last_modified_date"]
+            self.last_modified_by = underlying["last_modified_by"]
+        else:
+            self.drive_id = underlying["id"]
+            self.altLink = underlying["alternateLink"]
+            self.last_modified_date = parse_datetime(underlying["modifiedDate"])
+            self.last_modified_by = underlying["lastModifyingUser"]["emailAddress"]
+
         self._underlying = underlying
-        self.drive_id = underlying["id"]
         self.title = underlying["title"]
         self.mimeType = underlying["mimeType"]
         self.selfLink = underlying["selfLink"]
-        self.altLink = underlying["alternateLink"]
-        self.last_modified_date = parse_datetime(underlying["modifiedDate"])
-        self.last_modified_by = underlying["lastModifyingUser"]["emailAddress"]
 
 
 class GoogleDriveTextFile(GoogleDriveFile):
@@ -93,9 +101,21 @@ class GoogleDriveImageFile(GoogleDriveFile):
     def to_json(self) -> dict:
         return GoogleDriveImageFileSerializer(self).data
 
-    def __init__(self, underlying: dict):
-        super().__init__(underlying)
-        self.thumbnail_link = underlying["thumbnailLink"]
+    def __init__(self, underlying: dict, from_serialized=False):
+        super().__init__(underlying, from_serialized)
+        if from_serialized:
+            self.thumbnail_link = underlying["thumbnail_link"]
+        else:
+            self.thumbnail_link = underlying["thumbnailLink"]
+
+
+class S3Item:
+
+    def __init__(self, underlying):
+        self.bucket = underlying["bucket"]
+        self.region = underlying["region"]
+        self.key = underlying["key"]
+        self.meta = underlying.get("meta")
 
 
 class GoogleDriveFileSerializer(serializers.Serializer):
@@ -131,6 +151,12 @@ class GoogleDriveImageFileSerializer(GoogleDriveFileSerializer):
 
     # def create(self, validated_data):
     #     return GoogleDriveImageFile(validated_data["_underlying"])
+
+class S3ItemSerializer(serializers.Serializer):
+    bucket = serializers.CharField()
+    region = serializers.CharField()
+    key = serializers.CharField()
+    meta = serializers.JSONField()
 
 
 # Utils
