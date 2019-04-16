@@ -78,7 +78,6 @@ class GoogleDriveTextFile(GoogleDriveFile):
 
     def parse_content(self, raw: str, is_rich=False):
         content = ParsedContent(raw, self.format)
-        print(content)
         if is_rich:
             self.content_rich = content
         else:

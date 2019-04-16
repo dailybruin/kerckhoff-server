@@ -12,7 +12,7 @@ from .serializers import (
 )
 
 
-slug_with_dots = "[-a-zA-Z0-9_.]+"
+slug_with_dots = "[-a-zA-Z0-9_.&]+"
 
 
 class PackageSetViewSet(
