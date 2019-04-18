@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Comment
+from .models import Comment, CommentContent
 from kerckhoff.users.serializers import UserSerializer
 from rest_framework.validators import UniqueTogetherValidator
 
@@ -34,3 +34,12 @@ class CommentSerializer(serializers.ModelSerializer):
             "comment_content",
         )
         read_only_fields = ("id", "package", "created_by", "created_at")
+
+    def create(self, validated_data):
+        comment_content_data = validated_data.pop("comment_content")
+        comment_content = CommentContentSerializer(data=comment_content_data)
+        comment_content.is_valid()
+        comment = Comment.objects.create(**validated_data)
+        comment.comment_content = comment_content.validated_data
+        comment.save()
+        return comment
