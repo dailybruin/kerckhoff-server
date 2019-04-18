@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
-from .models import PackageSet, Package
+from .models import PackageSet, Package, PackageVersion
 
 from kerckhoff.users.serializers import UserSerializer
 
@@ -46,3 +46,29 @@ class PackageSerializer(serializers.ModelSerializer):
                 queryset=Package.objects.all(), fields=("slug", "package_set")
             )
         ]
+
+
+class PackageVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PackageVersion
+        fields = (
+            "id",
+            "id_num",
+            "package",
+            "creator",
+            "version_description",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("package", "created_at")
+
+
+class RetrievePackageSerializer(PackageSerializer):
+    package_version = PackageVersionSerializer()
+
+    def to_representation(self, obj):
+        package = super().to_representation(obj)
+        package_version = obj.get_version(self.context.get("version_number"))
+        if package_version is not None:
+            package["package_version"] = PackageVersionSerializer(package_version).data
+        return package
