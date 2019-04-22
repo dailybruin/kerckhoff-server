@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Package, PackageSet, PackageVersion
+from .models import Package, PackageSet, PackageVersion, PackageItem
 
 
 @admin.register(Package)
@@ -15,4 +15,9 @@ class PackageSetAdmin(admin.ModelAdmin):
 
 @admin.register(PackageVersion)
 class PackageVersionAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(PackageItem)
+class PackageItemAdmin(admin.ModelAdmin):
     pass
