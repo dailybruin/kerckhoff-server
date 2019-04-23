@@ -44,6 +44,7 @@ bleach = "*"
 "html5lib" = "*"
 python-frontmatter = "*"
 django-taggit = "*"
+django-taggit-serializer = "*"
 
 
 [dev-packages]

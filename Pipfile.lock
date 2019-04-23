@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0e87bd31787c8884e521f8d1cb959f1a639dc050b960890e32733d62720c80e1"
+            "sha256": "8d0e8e7d569039aeba1c0d2ed4f33c2894066f5ae30f79cb00d224d0e9151f45"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -125,6 +125,10 @@
         "django-taggit": {
             "hashes": [],
             "version": "==1.1.0"
+        },
+        "django-taggit-serializer": {
+            "hashes": [],
+            "version": "==0.1.7"
         },
         "django-unique-upload": {
             "hashes": [],
@@ -280,7 +284,6 @@
         },
         "python-dateutil": {
             "hashes": [],
-            "markers": "python_version >= '2.7'",
             "version": "==2.8.0"
         },
         "python-frontmatter": {
@@ -333,6 +336,7 @@
         },
         "urllib3": {
             "hashes": [],
+            "markers": "python_version >= '3.4'",
             "version": "==1.24.2"
         },
         "wcwidth": {

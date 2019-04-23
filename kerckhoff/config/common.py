@@ -25,6 +25,7 @@ class Common(Configuration):
         "rolepermissions",  # roles and permissions
         "corsheaders",
         "taggit",
+        "taggit_serializer",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
