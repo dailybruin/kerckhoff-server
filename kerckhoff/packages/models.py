@@ -22,6 +22,8 @@ from kerckhoff.packages.operations.models import (
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 
+from taggit.managers import TaggableManager
+
 
 User: AppUser = get_user_model()
 
@@ -210,6 +212,7 @@ class PackageVersion(models.Model):
     version_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tags = TaggableManager()
 
     def __str__(self):
         return self.package.slug + "/" + str(self.id_num)
@@ -238,3 +241,4 @@ class PackageItem(models.Model):
     data = JSONField(blank=True, default=dict)
     file_name = models.CharField(max_length=64)
     mime_types = models.CharField(max_length=64)
+    tags = TaggableManager()

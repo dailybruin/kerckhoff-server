@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7e755d095f8a80a18df1e4e8ff6eecdd877dc73cd9f97150ef1976b104f37e41"
+            "sha256": "0e87bd31787c8884e521f8d1cb959f1a639dc050b960890e32733d62720c80e1"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -47,7 +47,7 @@
         },
         "botocore": {
             "hashes": [],
-            "version": "==1.12.130"
+            "version": "==1.12.134"
         },
         "certifi": {
             "hashes": [],
@@ -122,6 +122,10 @@
             "hashes": [],
             "version": "==1.7.1"
         },
+        "django-taggit": {
+            "hashes": [],
+            "version": "==1.1.0"
+        },
         "django-unique-upload": {
             "hashes": [],
             "version": "==0.2.1"
@@ -144,7 +148,7 @@
         },
         "faker": {
             "hashes": [],
-            "version": "==1.0.4"
+            "version": "==1.0.5"
         },
         "flake8": {
             "hashes": [],
@@ -216,7 +220,7 @@
         },
         "mypy": {
             "hashes": [],
-            "version": "==0.700"
+            "version": "==0.701"
         },
         "mypy-extensions": {
             "hashes": [],
@@ -321,7 +325,7 @@
         },
         "typed-ast": {
             "hashes": [],
-            "version": "==1.3.1"
+            "version": "==1.3.4"
         },
         "uritemplate": {
             "hashes": [],
@@ -329,8 +333,7 @@
         },
         "urllib3": {
             "hashes": [],
-            "markers": "python_version >= '3.4'",
-            "version": "==1.24.1"
+            "version": "==1.24.2"
         },
         "wcwidth": {
             "hashes": [],
@@ -389,7 +392,7 @@
         },
         "pre-commit": {
             "hashes": [],
-            "version": "==1.15.1"
+            "version": "==1.15.2"
         },
         "pyyaml": {
             "hashes": [],
