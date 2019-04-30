@@ -30,6 +30,7 @@ class Common(Configuration):
         "kerckhoff.users",
         "kerckhoff.userprofiles",
         "kerckhoff.packages",
+        "kerckhoff.taskqueues",
     )
 
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
@@ -215,3 +216,16 @@ class Common(Configuration):
             "https://www.googleapis.com/auth/drive.file",
         ],
     }
+
+    # AWS
+    AWS_CONFIG = {
+        "ACCESS_KEY": os.getenv('AWS_ACCESS_KEY_ID'),
+        "SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
+        "REGION": os.getenv('AWS_REGION')
+    }
+
+    CELERY_BROKER_URL = 'redis://redis:6379'
+    CELERY_RESULT_BACKEND = 'redis://redis:6379'
+    CELERY_ACCEPT_CONTENT = ['application/json']
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TASK_SERIALIZER = 'json'
