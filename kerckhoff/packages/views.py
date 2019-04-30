@@ -9,6 +9,8 @@ from .serializers import (
     PackageSetSerializer,
     PackageSerializer,
     RetrievePackageSerializer,
+    PackageVersionSerializer,
+    CreatePackageVersionSerializer,
 )
 
 
@@ -81,13 +83,24 @@ class PackageViewSet(
         serializer = PackageSerializer(package, many=False)
         return Response(serializer.data)
 
+    @action(
+        methods=["post"], detail=True, serializer_class=CreatePackageVersionSerializer
+    )
+    def snapshot(self, request, **kwargs):
+        package: Package = self.get_object()
+        package_version = CreatePackageVersionSerializer(data=request.data)
+        package_version.is_valid(True)
+        print(package_version)
+        return Response(None)
+
     def retrieve(self, request, **kwargs):
         package = self.get_object()
-        version_number = request.query_params.get("version", 1)
+        version_number = request.query_params.get("version", -1)
         serializer = RetrievePackageSerializer(
             package, context={"version_number": version_number}
         )
         return Response(serializer.data)
+
 
 class PackageCreateAndListViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet

@@ -5,8 +5,8 @@ from .models import PackageSet, Package, PackageVersion, PackageItem
 
 from kerckhoff.users.serializers import UserSerializer
 
-from taggit_serializer.serializers import (TagListSerializerField,
-                                            TaggitSerializer)
+from taggit_serializer.serializers import TagListSerializerField, TaggitSerializer
+
 
 class PackageSetSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
@@ -56,6 +56,8 @@ class PackageSerializer(TaggitSerializer, serializers.ModelSerializer):
 
 
 class PackageVersionSerializer(serializers.ModelSerializer):
+    version_description = serializers.CharField(required=True)
+
     class Meta:
         model = PackageVersion
         fields = (
@@ -68,18 +70,31 @@ class PackageVersionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "id_num", "package", "creator", "created_at", "updated_at")
+
+        read_only_fields = (
+            "id",
+            "id_num",
+            "package",
+            "creator",
+            "created_at",
+            "updated_at",
+        )
 
 
-class RetrievePackageSerializer(PackageSerializer):
-    package_version = PackageVersionSerializer()
+class CreatePackageVersionSerializer(PackageVersionSerializer):
+    included_items = serializers.ListField(child=serializers.CharField())
 
-    def to_representation(self, obj):
-        package = super().to_representation(obj)
-        package_version = obj.get_version(self.context.get("version_number"))
-        if package_version is not None:
-            package["package_version"] = PackageVersionSerializer(package_version).data
-        return package
+    def create(self, validated_data):
+        print(validated_data)
+
+    @staticmethod
+    def validate_included_items(obj):
+        print(obj)
+
+    class Meta(PackageVersionSerializer.Meta):
+        fields = PackageVersionSerializer.Meta.fields + ("included_items",)
+        validators = []
+
 
 class PackageItemSerializer(TaggitSerializer, serializers.ModelSerializer):
     package_versions = serializers.StringRelatedField(many=True)
@@ -97,3 +112,20 @@ class PackageItemSerializer(TaggitSerializer, serializers.ModelSerializer):
             "tags",
         )
         read_only_fields = ("id", "package_versions", "data_type")
+
+
+class RetrievePackageSerializer(PackageSerializer):
+    version_data = serializers.SerializerMethodField()
+
+    def get_version_data(self, obj: Package):
+        version_number = self.context["version_number"]
+        package_version = obj.get_version(version_number)
+        if package_version is not None:
+            data = PackageVersionSerializer(package_version).data
+        else:
+            data = None
+        return data
+
+    class Meta(PackageSerializer.Meta):
+        fields = PackageSerializer.Meta.fields + ("version_data",)
+        read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)

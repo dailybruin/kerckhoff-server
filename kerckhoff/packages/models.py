@@ -173,7 +173,7 @@ class Package(models.Model):
         self.cached = as_json
         self.save()
 
-    def create_version(self, user, change_summary, package_items_set):
+    def create_version(self, user: User, change_summary, package_items_set):
         """Creates new PackageVersion object
 
         Arguments:
