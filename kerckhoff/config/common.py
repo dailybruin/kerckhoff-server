@@ -24,6 +24,8 @@ class Common(Configuration):
         "django_filters",  # for filtering rest endpoints
         "rolepermissions",  # roles and permissions
         "corsheaders",
+        "taggit",
+        "taggit_serializer",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
