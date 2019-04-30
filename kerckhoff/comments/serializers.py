@@ -10,6 +10,9 @@ class CommentContentSerializer(serializers.Serializer):
     format = serializers.CharField(allow_blank=False)
     text = serializers.CharField()
 
+    def create(self, validated_data):
+        return CommentContent(**validated_data)
+
     def validate_format(self, value):
         if value not in comment_content_formats:
             raise serializers.ValidationError(
@@ -43,3 +46,12 @@ class CommentSerializer(serializers.ModelSerializer):
         comment.comment_content = comment_content.validated_data
         comment.save()
         return comment
+
+    def update(self, instance, validated_data):
+        comment_content_data = validated_data.pop("comment_content")
+        comment_content = CommentContentSerializer(data=comment_content_data)
+        comment_content.is_valid()
+        Comment.objects.filter(pk=instance.id).update(
+            comment_content=comment_content.validated_data, **validated_data
+        )
+        return instance
