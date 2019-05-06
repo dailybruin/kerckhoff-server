@@ -44,6 +44,7 @@ django-taggit = "*"
 django-taggit-serializer = "*"
 celery = "*"
 redis = "*"
+django-celery-results = "*"
 
 [dev-packages]
 black = "==18.9b0"
