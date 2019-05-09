@@ -87,13 +87,9 @@ class CreatePackageVersionSerializer(PackageVersionSerializer):
     def create(self, validated_data):
         print(validated_data)
 
-    @staticmethod
-    def validate_included_items(obj):
-        print(obj)
-
     class Meta(PackageVersionSerializer.Meta):
         fields = PackageVersionSerializer.Meta.fields + ("included_items",)
-        validators = []
+        validators = [.validate_included_items]
 
 
 class PackageItemSerializer(TaggitSerializer, serializers.ModelSerializer):
