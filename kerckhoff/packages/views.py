@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
 
-from kerckhoff.taskqueues.tasks import sync_gdrive_task
+from .tasks import sync_gdrive_task
 
 from .models import PackageSet, Package
 from .serializers import (
