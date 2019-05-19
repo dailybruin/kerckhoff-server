@@ -22,6 +22,17 @@ services:
       - postgres
   redis:
     image: redis:5-alpine
+  celery:
+    build: ./
+    env_file:
+      - .env
+      - .secrets
+    command: celery -A kerckhoff worker -l info
+    volumes:
+      - ./:/code
+    depends_on:
+      - postgres
+      - redis
   # documentation:
   #   restart: always
   #   build: ./

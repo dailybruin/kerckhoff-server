@@ -26,10 +26,12 @@ class Common(Configuration):
         "corsheaders",
         "taggit",
         "taggit_serializer",
+        "django_celery_results",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
         "kerckhoff.packages",
+        "kerckhoff.taskqueues",
         "kerckhoff.comments",
     )
 
@@ -223,3 +225,9 @@ class Common(Configuration):
         "SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
         "REGION": os.getenv('AWS_REGION')
     }
+
+    CELERY_BROKER_URL = 'redis://redis:6379'
+    CELERY_RESULT_BACKEND = 'django-db'
+    CELERY_ACCEPT_CONTENT = ['application/json']
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TASK_SERIALIZER = 'json'

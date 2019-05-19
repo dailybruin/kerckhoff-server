@@ -1,12 +1,9 @@
 [[source]]
-
 url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 pytz = "==2018.9"
 django-configurations = "==2.1"
 gunicorn = "==19.9.0"
@@ -45,14 +42,13 @@ bleach = "*"
 python-frontmatter = "*"
 django-taggit = "*"
 django-taggit-serializer = "*"
-
+celery = "*"
+redis = "*"
+django-celery-results = "*"
 
 [dev-packages]
-
 black = "==18.9b0"
 pre-commit = "*"
 
-
 [requires]
-
 python_version = "3.7"
