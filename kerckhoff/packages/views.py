@@ -88,10 +88,18 @@ class PackageViewSet(
     )
     def snapshot(self, request, **kwargs):
         package: Package = self.get_object()
-        package_version = CreatePackageVersionSerializer(data=request.data)
+        package_version = CreatePackageVersionSerializer(
+            data=request.data, context={"package": package, "user": request.user}
+        )
         package_version.is_valid(True)
-        print(package_version)
-        return Response(None)
+        updated_pv = package_version.save()
+        return Response(PackageVersionSerializer(updated_pv).data)
+
+    @action(methods=["get"], detail=True)
+    def versions(self, request, **kwargs):
+        package: Package = self.get_object()
+        serializer = PackageVersionSerializer(package.get_all_versions(), many=True)
+        return Response({"results": serializer.data})
 
     def retrieve(self, request, **kwargs):
         package = self.get_object()
@@ -99,7 +107,8 @@ class PackageViewSet(
         serializer = RetrievePackageSerializer(
             package, context={"version_number": version_number}
         )
-        return Response(serializer.data)
+        response = serializer.data
+        return Response(response)
 
 
 class PackageCreateAndListViewSet(

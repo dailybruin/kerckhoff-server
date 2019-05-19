@@ -1,9 +1,13 @@
-from rest_framework import serializers
 from datetime import datetime
 from typing import Optional
+
+import frontmatter
 from django.utils.dateparse import parse_datetime
 from markdown import Markdown
-import frontmatter
+from rest_framework import serializers
+
+from kerckhoff.packages import constants
+import archieml
 
 
 class ParsedContent:
@@ -20,9 +24,31 @@ class ParsedContent:
             self.raw = raw
         try:
             if format == FORMAT_MD:
-                file = frontmatter.loads(raw)
+                file = frontmatter.loads(self.raw)
                 self.html = MarkdownParser.convert(file.content)
                 self.data = file.metadata
+            elif format == FORMAT_AML:
+                aml_content = archieml.loads(self.raw)
+
+                # HACK: Fixes a bad bug in the archieml parser
+                for key, value in aml_content.items():
+                    if isinstance(value, list):
+                        for index, item in enumerate(value):
+                            if isinstance(item, dict):
+                                if (
+                                    item.get("type") is None
+                                    and item.get("value")
+                                    and isinstance(value[index - 1], dict)
+                                    and value[index - 1].get("type")
+                                ):
+                                    aml_content[key][index - 1]["value"] = item["value"]
+                                    aml_content[key][index] = None
+                        aml_content[key] = [
+                            i for i in aml_content[key] if i is not None
+                        ]
+
+                self.html = ""
+                self.data = aml_content
             else:
                 self.html = ""
                 self.data = {"status": 0, "content": {}}
@@ -41,15 +67,9 @@ class GoogleDriveFile:
     last_modified_by: str
     last_modified_date: datetime
     _underlying: dict
-
-    def get_download_link(self) -> str:
-        return self.selfLink + "?alt=media"
-
-    def to_json(self) -> dict:
-        return GoogleDriveFileSerializer(self).data
+    _code: str
 
     def __init__(self, underlying: dict, from_serialized=False):
-        self._from_serialized = from_serialized
         if from_serialized:
             self.drive_id = underlying["drive_id"]
             self.altLink = underlying["altLink"]
@@ -66,23 +86,63 @@ class GoogleDriveFile:
         self.mimeType = underlying["mimeType"]
         self.selfLink = underlying["selfLink"]
 
+    def get_download_link(self) -> str:
+        return self.selfLink + "?alt=media"
+
+    def get_data_type(self) -> str:
+        return constants.TEXT
+
+    def get_underlying(self) -> dict:
+        # TODO - override this method to customize the data representation
+        return self._underlying
+
+    def to_json(self) -> dict:
+        return GoogleDriveFileSerializer(self).data
+
+    @classmethod
+    def from_json(cls, serialized: dict):
+        return {
+            GoogleDriveTextFile._code: GoogleDriveTextFile.from_json,
+            GoogleDriveImageFile._code: GoogleDriveImageFile.from_json,
+        }.get(serialized["_code"], lambda x: GoogleDriveFile(x, from_serialized=True))(
+            serialized
+        )
+
 
 class GoogleDriveTextFile(GoogleDriveFile):
     format: str
-    content_plain: ParsedContent
-    content_rich: ParsedContent
+    content_plain: Optional[ParsedContent]
+    content_rich: Optional[ParsedContent]
     _is_rich: bool  # Transient state - not serialized
 
-    def __init__(self, underlying: dict):
-        super().__init__(underlying)
-        self.format = infer_format(self.title)
+    _code = "GDRIVE_TXT"
+
+    def __init__(self, underlying: dict, from_serialized=False):
+        super().__init__(underlying, from_serialized)
+        if from_serialized:
+            self.format = underlying["format"]
+            self.content_plain = underlying.get("content_plain")
+            self.content_rich = underlying.get("content_rich")
+        else:
+            self.format = infer_format(self.title)
 
     def get_download_link(self) -> str:
         mime_type = "text/html" if self._is_rich else "text/plain"
         return self.selfLink + f"/export?mimeType={mime_type}"
 
+    def get_data_type(self) -> str:
+        return {
+            FORMAT_AML: constants.AML,
+            FORMAT_MD: constants.MARKDOWN,
+            FORMAT_PLAIN: constants.TEXT,
+        }[self.format]
+
     def to_json(self) -> dict:
         return GoogleDriveTextFileSerializer(self).data
+
+    @classmethod
+    def from_json(cls, serialized: dict):
+        return GoogleDriveTextFile(serialized, from_serialized=True)
 
     def parse_content(self, raw: str, is_rich=False):
         content = ParsedContent(raw, self.format)
@@ -97,8 +157,7 @@ class GoogleDriveImageFile(GoogleDriveFile):
     src_large: Optional[str]
     src_medium: Optional[str]
 
-    def to_json(self) -> dict:
-        return GoogleDriveImageFileSerializer(self).data
+    _code = "GDRIVE_IMG"
 
     def __init__(self, underlying: dict, from_serialized=False):
         super().__init__(underlying, from_serialized)
@@ -107,9 +166,18 @@ class GoogleDriveImageFile(GoogleDriveFile):
         else:
             self.thumbnail_link = underlying["thumbnailLink"]
 
+    def get_data_type(self):
+        return constants.IMAGE
+
+    def to_json(self) -> dict:
+        return GoogleDriveImageFileSerializer(self).data
+
+    @classmethod
+    def from_json(cls, serialized: dict):
+        return GoogleDriveImageFile(serialized, from_serialized=True)
+
 
 class S3Item:
-
     def __init__(self, underlying):
         self.bucket = underlying["bucket"]
         self.region = underlying["region"]
@@ -125,10 +193,7 @@ class GoogleDriveFileSerializer(serializers.Serializer):
     altLink = serializers.URLField()
     last_modified_by = serializers.EmailField()
     last_modified_date = serializers.DateTimeField()
-    # #_underlying = serializers.JSONField(source="*")
-    #
-    # def create(self, validated_data):
-    #     return GoogleDriveFile(validated_data["_underlying"])
+    _code = serializers.CharField()
 
 
 class ParsedContentSerializer(serializers.Serializer):
@@ -148,8 +213,6 @@ class GoogleDriveImageFileSerializer(GoogleDriveFileSerializer):
     src_large = serializers.CharField(required=False)
     src_medium = serializers.CharField(required=False)
 
-    # def create(self, validated_data):
-    #     return GoogleDriveImageFile(validated_data["_underlying"])
 
 class S3ItemSerializer(serializers.Serializer):
     bucket = serializers.CharField()
@@ -164,11 +227,11 @@ FORMAT_AML = "AML"
 FORMAT_MD = "MD"
 FORMAT_PLAIN = "PLAIN"
 
-FORMAT_TABLE = {"aml": FORMAT_AML, "md": FORMAT_MD}
+FormatTable = {"aml": FORMAT_AML, "md": FORMAT_MD}
 
 MarkdownParser = Markdown()
 
 
 def infer_format(file_title: str) -> str:
     extension = file_title.split(".")[-1].lower()
-    return FORMAT_TABLE.get(extension, FORMAT_PLAIN)
+    return FormatTable.get(extension, FORMAT_PLAIN)

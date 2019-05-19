@@ -89,4 +89,3 @@ GoogleDocHTMLCleaner: Cleaner = Cleaner(
         RemoveGoogleTrackingFromHrefs,
     ],
 )
-

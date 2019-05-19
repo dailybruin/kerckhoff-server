@@ -219,7 +219,7 @@ class Common(Configuration):
 
     # AWS
     AWS_CONFIG = {
-        "ACCESS_KEY": os.getenv('AWS_ACCESS_KEY_ID'),
-        "SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
-        "REGION": os.getenv('AWS_REGION')
+        "ACCESS_KEY": os.getenv("AWS_ACCESS_KEY_ID"),
+        "SECRET_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "REGION": os.getenv("AWS_REGION"),
     }
