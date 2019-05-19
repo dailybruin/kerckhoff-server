@@ -4,7 +4,9 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
 
-from .models import PackageSet, Package, PackageVersion
+from .tasks import sync_gdrive_task
+
+from .models import PackageSet, Package
 from .serializers import (
     PackageSetSerializer,
     PackageSerializer,
@@ -35,11 +37,13 @@ class PackageSetViewSet(
         """
         Imports all packages from the Google Drive folder of a package set
         """
-        package_set = self.get_object()
-        new_packages = package_set.get_new_packages_from_gdrive()
-        serializer = PackageSerializer(new_packages, many=True)
-        response = {"created": serializer.data, "total": len(new_packages)}
+        response = sync_gdrive_task(slug)
         return Response(response)
+
+    @action(methods=["post"], detail=True, serializer_class=Serializer)
+    def async_sync_gdrive(self, request, slug):
+        task = sync_gdrive_task.delay(slug)
+        return Response({'id': task.id})
 
 
 class PackageSetCreateAndListViewSet(

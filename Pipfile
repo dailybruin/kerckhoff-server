@@ -44,6 +44,9 @@ django-taggit = "*"
 django-taggit-serializer = "*"
 archieml = "*"
 drf-yasg = "*"
+celery = "*"
+redis = "*"
+django-celery-results = "*"
 
 [dev-packages]
 black = "==18.9b0"
