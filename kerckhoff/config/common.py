@@ -26,6 +26,7 @@ class Common(Configuration):
         "corsheaders",
         "taggit",
         "taggit_serializer",
+        "drf_yasg",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",

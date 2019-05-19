@@ -43,6 +43,7 @@ python-frontmatter = "*"
 django-taggit = "*"
 django-taggit-serializer = "*"
 archieml = "*"
+drf-yasg = "*"
 
 [dev-packages]
 black = "==18.9b0"
