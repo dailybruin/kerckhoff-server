@@ -93,6 +93,7 @@ class PackageViewSet(
         )
         return Response(serializer.data)
 
+
 class PackageCreateAndListViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
