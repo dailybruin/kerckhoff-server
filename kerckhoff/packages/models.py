@@ -41,7 +41,6 @@ class GoogleDriveMeta(NamedTuple):
     folder_id: str
     folder_url: str
 
-
 class PackageSet(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=32, unique=True)
@@ -196,6 +195,34 @@ class Package(models.Model):
         self.latest_version = new_pv
         # return 'Successfully created PackageVersion object!'
 
+    def add_tags(self, tags_set):
+        """[Endpoint for adding tags.]
+        
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+            e.g. tags_set = ("deez", "nuts", "daily-bruin")
+        """
+        tags_list = list(tags_set)
+        self.tags.add(*tags_list)
+    
+    def remove_tags(self, tags_set):
+        """[Endpoint for removing tags. No exception raised if model
+        does not have the tags.]
+                
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+        """
+        tags_list = list(tags_set)
+        self.tags.remove(*tags_list)
+
+    def filter_by_tags(self, tags_set):
+        """[Returns list of distinct Package objects with the tags]
+        
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+        """
+        tags_list = list(tags_set)
+        return self.objects.filter(tags__name__in=tags_list).distinct()
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
@@ -242,3 +269,33 @@ class PackageItem(models.Model):
     file_name = models.CharField(max_length=64)
     mime_types = models.CharField(max_length=64)
     tags = TaggableManager()
+
+    def add_tags(self, tags_set):
+        """[Endpoint for adding tags.]
+        
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+            e.g. tags_set = ("deez", "nuts", "daily-bruin")
+        """
+        tags_list = list(tags_set)
+        self.tags.add(*tags_list)
+    
+    def remove_tags(self, tags_set):
+        """[Endpoint for removing tags. No exception raised if model
+        does not have the tags.]
+                
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+        """
+        tags_list = list(tags_set)
+        self.tags.remove(*tags_list)
+
+    def filter_by_tags(self, tags_set):
+        """[Returns list of distinct PackageItem objects with the tags]
+        
+        Arguments:
+            tags_set {unordered set} -- [user-specified set of strings]
+        """
+        tags_list = list(tags_set)
+        return self.objects.filter(tags__name__in=tags_list).distinct()
+
