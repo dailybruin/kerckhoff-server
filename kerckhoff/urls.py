@@ -8,6 +8,8 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.documentation import include_docs_urls
 from rest_framework.permissions import AllowAny
 from rest_framework_nested.routers import NestedSimpleRouter
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
 from .users.urls import urlpatterns as auth_urlpatterns
 from .users.views import UserCreateViewSet, UserViewSet
@@ -36,13 +38,36 @@ package_set_router.register(
 package_router = NestedSimpleRouter(package_set_router, r"packages", lookup="package")
 package_router.register(r"comments", CommentViewSet, base_name="comments")
 
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Kerckhoff API", default_version="v1", description="The Kerckhoff API"
+    ),
+    public=True,
+    permission_classes=(AllowAny,),
+)
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
-        "api/v1/docs/",
+        "api/v1/docs-old/",
         include_docs_urls(
             title="Kerckhoff REST API (v1)", permission_classes=[AllowAny]
         ),
+    ),
+    re_path(
+        r"^api/v1/docs/swagger(?P<format>\.json|\.yaml)$",
+        schema_view.without_ui(cache_timeout=0),
+        name="schema-json",
+    ),
+    re_path(
+        r"^api/v1/docs/swagger-ui/$",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
+    re_path(
+        r"^api/v1/docs/$",
+        schema_view.with_ui("redoc", cache_timeout=0),
+        name="schema-redoc",
     ),
     path("api/v1/", include(router.urls)),
     path("api/v1/", include(package_set_router.urls)),

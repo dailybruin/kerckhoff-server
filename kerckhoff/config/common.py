@@ -26,6 +26,7 @@ class Common(Configuration):
         "corsheaders",
         "taggit",
         "taggit_serializer",
+        "drf_yasg",
         "django_celery_results",
         # Your apps
         "kerckhoff.users",
@@ -221,9 +222,9 @@ class Common(Configuration):
 
     # AWS
     AWS_CONFIG = {
-        "ACCESS_KEY": os.getenv('AWS_ACCESS_KEY_ID'),
-        "SECRET_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
-        "REGION": os.getenv('AWS_REGION')
+        "ACCESS_KEY": os.getenv("AWS_ACCESS_KEY_ID"),
+        "SECRET_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "REGION": os.getenv("AWS_REGION"),
     }
 
     CELERY_BROKER_URL = 'redis://redis:6379'

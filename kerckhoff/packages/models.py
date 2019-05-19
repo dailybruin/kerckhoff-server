@@ -1,29 +1,26 @@
 import re
 import uuid
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import RegexValidator
+from django.db import models, transaction
 from django.utils.timezone import now
+from taggit.managers import TaggableManager
 
-from django.db import models
 from kerckhoff.packages.exceptions import GoogleDriveNotConfiguredException
 from kerckhoff.packages.operations.google_drive import GoogleDriveOperations
 from kerckhoff.packages.operations.models import (
     GoogleDriveFile,
-    GoogleDriveFileSerializer,
     GoogleDriveImageFile,
-    GoogleDriveImageFileSerializer,
     GoogleDriveTextFile,
     FORMAT_MD,
 )
+from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
-
-from taggit.managers import TaggableManager
-
 
 User: AppUser = get_user_model()
 
@@ -95,7 +92,7 @@ class Package(models.Model):
     slug = models.CharField(max_length=64, validators=[validate_slug_with_dots])
     package_set = models.ForeignKey(PackageSet, on_delete=models.PROTECT)
     metadata = JSONField(blank=True, default=dict, null=True)
-    cached = JSONField(blank=True, default=dict, null=True)
+    cached = JSONField(blank=True, default=list, null=True)
     last_fetched_date = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -124,6 +121,10 @@ class Package(models.Model):
             package_version = None
         return package_version
 
+    def get_all_versions(self) -> List["PackageVersion"]:
+        results = list(self.packageversion_set.order_by("-id_num").all())
+        return results
+
     def get_or_create_gdrive_meta(self) -> GoogleDriveMeta:
         data = self.metadata.get(GOOGLE_DRIVE_META_KEY)
         if data is None:
@@ -151,7 +152,7 @@ class Package(models.Model):
         # Export content files as HTML and plaintext
         for file in content_files:
             if file.format != FORMAT_MD:
-                # Markdown does not support HTML format
+                # Markdown does not support HTML format, so we do not do is_rich for MD
                 file._is_rich = True
                 file.parse_content(
                     GoogleDocHTMLCleaner.clean(ops.download_item(file).text),
@@ -173,28 +174,55 @@ class Package(models.Model):
         self.cached = as_json
         self.save()
 
-    def create_version(self, user, change_summary, package_items_set):
+    def create_version(
+        self,
+        user: User,
+        package_version: "PackageVersion",
+        updated_package_item_titles: List[str],
+    ):
         """Creates new PackageVersion object
 
         Arguments:
             user {User} -- User object, required argument
-            package_items_set {set} -- set of PackageItem ForeignKeys, TODO views to handle this?
+            package_version {PackageVersion} -- the package version to be added
+            updated_package_item_titles {List[str]} -- list of item titles to be included
         """
-        id_num = 0
-        if self.packageversion_set.count() > 1:
-            id_num = self.packageversion_set.count() - 1
-        # Add package items
-        new_pv = self.packageversion_set.create(
-            package=self,
-            creator=user,
-            version_description=change_summary,
-            id_num=id_num,
-        )
-        for package_item in package_items_set:
-            new_pv.packageitem_set.add(package_item)
-        new_pv.save()
-        self.latest_version = new_pv
-        # return 'Successfully created PackageVersion object!'
+        with transaction.atomic():
+            package_version.id_num = self.packageversion_set.count() + 1
+            updated_package_item_titles_set = set(updated_package_item_titles)
+
+            package_version.creator = user
+            package_version.package = self
+
+            package_version.full_clean()
+            package_version.save()
+
+            # Items from the last version
+            previous_version: Optional[PackageVersion] = self.latest_version
+            if previous_version:
+                previous_items = list(previous_version.packageitem_set.all())
+            else:
+                previous_items: List[PackageItem] = []
+
+            # All previous items that are not updated
+            not_updated_items = [
+                pi
+                for pi in previous_items
+                if pi.file_name not in updated_package_item_titles_set
+            ]
+
+            # All the updated items
+            updated_items = [
+                PackageItem.create_from_google_drive_item(GoogleDriveFile.from_json(ci))
+                for ci in self.cached
+                if ci["title"] in updated_package_item_titles_set
+            ]
+
+            package_version.packageitem_set.add(*(updated_items + not_updated_items))
+
+            self.latest_version = package_version
+            self.save()
+            return package_version
 
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
@@ -206,11 +234,11 @@ class PackageVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id_num = models.IntegerField(
         default=0
-    )  # Integer wrapper for uuid for UI referencing, set during PackageVersion creation. Zero-indexed.
+    )  # Integer wrapper for uuid for UI referencing, set during PackageVersion creation.
     title = models.CharField(max_length=64)
-    package = models.ForeignKey(Package, on_delete=models.CASCADE)
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     version_description = models.TextField(blank=True)
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -221,20 +249,6 @@ class PackageVersion(models.Model):
 
 
 class PackageItem(models.Model):
-    TEXT = "txt"
-    AML = "aml"
-    IMAGE = "img"
-    MARKDOWN = "mdn"
-    SPREADSHEET = "xls"
-
-    DTYPE_CHOICES = (
-        (TEXT, "TEXT"),
-        (AML, "ARCHIEML"),
-        (IMAGE, "IMAGE"),
-        (MARKDOWN, "MARKDOWN"),
-        (SPREADSHEET, "SPREADSHEET"),
-    )
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package_versions = models.ManyToManyField(PackageVersion)
     data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
@@ -242,3 +256,16 @@ class PackageItem(models.Model):
     file_name = models.CharField(max_length=64)
     mime_types = models.CharField(max_length=64)
     tags = TaggableManager()
+
+    @classmethod
+    def create_from_google_drive_item(
+        cls, google_drive_file: GoogleDriveFile
+    ) -> "PackageItem":
+        pi = cls(
+            data_type=google_drive_file.get_data_type(),
+            data=google_drive_file.get_underlying(),
+            file_name=google_drive_file.title,
+            mime_types=google_drive_file.mimeType,
+        )
+        pi.save()
+        return pi
