@@ -23,7 +23,8 @@ services:
   redis:
     image: redis:5-alpine
   celery:
-    build: ./
+    image: web
+    restart: always
     env_file:
       - .env
       - .secrets

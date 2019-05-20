@@ -1,9 +1,10 @@
-import boto3
+import logging
+import mimetypes
 import os
 import uuid
-import mimetypes
+
+import boto3
 from django.conf import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,9 @@ def upload_file(s3_client, image_path, bucket, mimetype):
         raise FileNotFoundError(image_path)
     key = str(uuid.uuid4()) + mimetypes.guess_extension(mimetype)
     args = {"ContentType": mimetype}
-    s3_client.upload_file(image_path, bucket, key, ExtraArgs=args)
+    res = s3_client.upload_file(image_path, bucket, key, ExtraArgs=args)
     logger.debug("Uploaded {0} to {1}/{2}".format(image_path, bucket, key))
-    return key
+    return key, res
 
 
 def get_bucket_region(s3_client, bucket):

@@ -70,10 +70,15 @@ class Common(Configuration):
         )
     }
 
+    # Session
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
+    # Cache
     CACHE = {
         "default": {
-            "BACKEND": "redis_cache.RedisCache",
+            "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": os.getenv("CACHE_HOST"),
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         }
     }
 
@@ -225,10 +230,11 @@ class Common(Configuration):
         "ACCESS_KEY": os.getenv("AWS_ACCESS_KEY_ID"),
         "SECRET_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
         "REGION": os.getenv("AWS_REGION"),
+        "MEDIA_BUCKET_NAME": os.getenv("AWS_S3_MEDIA_BUCKET"),
     }
 
-    CELERY_BROKER_URL = 'redis://redis:6379'
-    CELERY_RESULT_BACKEND = 'django-db'
-    CELERY_ACCEPT_CONTENT = ['application/json']
-    CELERY_RESULT_SERIALIZER = 'json'
-    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND = "django-db"
+    CELERY_ACCEPT_CONTENT = ["application/json"]
+    CELERY_RESULT_SERIALIZER = "json"
+    CELERY_TASK_SERIALIZER = "json"

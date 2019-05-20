@@ -12,6 +12,7 @@ from taggit.managers import TaggableManager
 
 from kerckhoff.packages.exceptions import GoogleDriveNotConfiguredException
 from kerckhoff.packages.operations.google_drive import GoogleDriveOperations
+from kerckhoff.packages.operations.image_utils import ImageUtils
 from kerckhoff.packages.operations.models import (
     GoogleDriveFile,
     GoogleDriveImageFile,
@@ -191,7 +192,7 @@ class Package(models.Model):
             package_version.id_num = self.packageversion_set.count() + 1
             updated_package_item_titles_set = set(updated_package_item_titles)
 
-            package_version.creator = user
+            package_version.created_by = user
             package_version.package = self
 
             package_version.full_clean()
@@ -213,7 +214,9 @@ class Package(models.Model):
 
             # All the updated items
             updated_items = [
-                PackageItem.create_from_google_drive_item(GoogleDriveFile.from_json(ci))
+                PackageItem.create_from_google_drive_item(
+                    user, GoogleDriveFile.from_json(ci)
+                )
                 for ci in self.cached
                 if ci["title"] in updated_package_item_titles_set
             ]
@@ -259,11 +262,11 @@ class PackageItem(models.Model):
 
     @classmethod
     def create_from_google_drive_item(
-        cls, google_drive_file: GoogleDriveFile
+        cls, user: User, google_drive_file: GoogleDriveFile
     ) -> "PackageItem":
         pi = cls(
             data_type=google_drive_file.get_data_type(),
-            data=google_drive_file.get_underlying(),
+            data=google_drive_file.snapshot(image_utils=ImageUtils(user)),
             file_name=google_drive_file.title,
             mime_types=google_drive_file.mimeType,
         )

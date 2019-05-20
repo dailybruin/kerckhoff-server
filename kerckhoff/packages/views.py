@@ -43,7 +43,7 @@ class PackageSetViewSet(
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def async_sync_gdrive(self, request, slug):
         task = sync_gdrive_task.delay(slug)
-        return Response({'id': task.id})
+        return Response({"id": task.id})
 
 
 class PackageSetCreateAndListViewSet(

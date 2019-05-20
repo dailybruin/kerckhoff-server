@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
+import archieml
 import frontmatter
 from django.utils.dateparse import parse_datetime
 from markdown import Markdown
 from rest_framework import serializers
 
 from kerckhoff.packages import constants
-import archieml
 
 
 class ParsedContent:
@@ -92,11 +92,7 @@ class GoogleDriveFile:
     def get_data_type(self) -> str:
         return constants.TEXT
 
-    def get_underlying(self) -> dict:
-        # TODO - override this method to customize the data representation
-        return self._underlying
-
-    def to_json(self) -> dict:
+    def to_json(self, **kwargs) -> dict:
         return GoogleDriveFileSerializer(self).data
 
     @classmethod
@@ -107,6 +103,13 @@ class GoogleDriveFile:
         }.get(serialized["_code"], lambda x: GoogleDriveFile(x, from_serialized=True))(
             serialized
         )
+
+    def snapshot(self, **kwargs) -> Optional[dict]:
+        """
+        Performs the actions necessary for snapshotting the data
+        :return: the snapshot results
+        """
+        return self.to_json()
 
 
 class GoogleDriveTextFile(GoogleDriveFile):
@@ -137,7 +140,7 @@ class GoogleDriveTextFile(GoogleDriveFile):
             FORMAT_PLAIN: constants.TEXT,
         }[self.format]
 
-    def to_json(self) -> dict:
+    def to_json(self, **kwargs) -> dict:
         return GoogleDriveTextFileSerializer(self).data
 
     @classmethod
@@ -156,6 +159,8 @@ class GoogleDriveImageFile(GoogleDriveFile):
     thumbnail_link: str
     src_large: Optional[str]
     src_medium: Optional[str]
+    s3_key: Optional[str]
+    s3_bucket: Optional[str]
 
     _code = "GDRIVE_IMG"
 
@@ -169,12 +174,22 @@ class GoogleDriveImageFile(GoogleDriveFile):
     def get_data_type(self):
         return constants.IMAGE
 
-    def to_json(self) -> dict:
+    def to_json(self, **kwargs) -> dict:
+        if kwargs.get("refresh") and self.s3_key and self.s3_bucket:
+            image_utils: "ImageUtils" = kwargs["image_utils"]
+            self.src_large = image_utils.get_public_link(self)
         return GoogleDriveImageFileSerializer(self).data
 
     @classmethod
     def from_json(cls, serialized: dict):
         return GoogleDriveImageFile(serialized, from_serialized=True)
+
+    def snapshot(self, **kwargs) -> Optional[dict]:
+        image_utils: "ImageUtils" = kwargs["image_utils"]
+        res = image_utils.snapshot_image(self)
+        self.s3_key = res["key"]
+        self.s3_bucket = res["bucket"]
+        return self.to_json(refresh=True, image_utils=image_utils)
 
 
 class S3Item:
@@ -212,13 +227,8 @@ class GoogleDriveImageFileSerializer(GoogleDriveFileSerializer):
     thumbnail_link = serializers.URLField()
     src_large = serializers.CharField(required=False)
     src_medium = serializers.CharField(required=False)
-
-
-class S3ItemSerializer(serializers.Serializer):
-    bucket = serializers.CharField()
-    region = serializers.CharField()
-    key = serializers.CharField()
-    meta = serializers.JSONField()
+    s3_key = serializers.CharField(required=False)
+    s3_bucket = serializers.CharField(required=False)
 
 
 # Utils
