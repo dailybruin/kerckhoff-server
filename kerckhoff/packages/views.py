@@ -1,4 +1,5 @@
-from rest_framework import mixins, viewsets, filters
+from django_filters import rest_framework as filters
+from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
@@ -14,6 +15,16 @@ from .serializers import (
 
 slug_with_dots = "[-a-zA-Z0-9_.&]+"
 
+class TagsFilter(filters.DjangoFilterBackend):
+    """[Custom generic filtering for tags]
+    Returns all objects which match any of the provided tags
+    """
+    def filter(self, queryset, value):
+        if value:
+            tags = [tag.strip() for tag in value.split(',')]
+            queryset = queryset.filter(tags__name__in=tags).distinct()
+
+        return queryset
 
 class PackageSetViewSet(
     mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
@@ -58,6 +69,12 @@ class PackageSetCreateAndListViewSet(
     filter_backends = (filters.OrderingFilter,)
     ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
 
+class PackageFilter(filters.FilterSet):
+    tags = TagsFilter(name="tags")
+
+    class Meta:
+        model = Package
+        fields = ('tags')
 
 class PackageViewSet(
     mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
@@ -109,3 +126,5 @@ class PackageCreateAndListViewSet(
     lookup_value_regex = slug_with_dots
     filter_backends = (filters.OrderingFilter,)
     ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
+
+    #TODO How to use filterset_fields together with filterset_class???
