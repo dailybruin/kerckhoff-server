@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import mimetypes
 
 from PIL import Image
 from django.conf import settings
@@ -41,7 +42,8 @@ class ImageUtils:
         res = op.download_item(google_drive_image_file)
         if res.ok:
             # ToDo: Handle non-jpeg
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            ext = mimetypes.guess_extension(google_drive_image_file.mimeType)
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
                 image_path = f.name
                 for chunk in res:
                     f.write(chunk)
