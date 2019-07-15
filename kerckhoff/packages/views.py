@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
 
+from kerckhoff.integrations.serializers import IntegrationSerializer
 from .tasks import sync_gdrive_task
 
 from .models import PackageSet, Package
@@ -13,6 +14,7 @@ from .serializers import (
     RetrievePackageSerializer,
     PackageVersionSerializer,
     CreatePackageVersionSerializer,
+    PackageSetDetailedSerializer,
 )
 
 
@@ -27,7 +29,7 @@ class PackageSetViewSet(
     """
 
     queryset = PackageSet.objects.all()
-    serializer_class = PackageSetSerializer
+    serializer_class = PackageSetDetailedSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "slug"
     lookup_value_regex = slug_with_dots
@@ -44,6 +46,14 @@ class PackageSetViewSet(
     def async_sync_gdrive(self, request, slug):
         task = sync_gdrive_task.delay(slug)
         return Response({"id": task.id})
+
+    @action(methods=["post"], detail=True, serializer_class=IntegrationSerializer)
+    def integration(self, request, slug):
+        package_set: PackageSet = self.get_object()
+        new_integration = IntegrationSerializer(data=request.data)
+        new_integration.is_valid(raise_exception=True)
+        new_integration.save(created_by=request.user, package_set=package_set)
+        return Response(new_integration.data)
 
 
 class PackageSetCreateAndListViewSet(
@@ -86,6 +96,12 @@ class PackageViewSet(
         package.fetch_cache()
         serializer = PackageSerializer(package, many=False)
         return Response(serializer.data)
+
+    @action(methods=["post"], detail=True, serializer_class=Serializer)
+    def publish(self, request, **kwargs):
+        package = self.get_object()
+        package.publish()
+        return Response(status=200)
 
     @action(
         methods=["post"], detail=True, serializer_class=CreatePackageVersionSerializer

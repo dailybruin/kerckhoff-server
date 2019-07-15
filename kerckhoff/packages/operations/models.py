@@ -8,6 +8,7 @@ from markdown import Markdown
 from rest_framework import serializers
 
 from kerckhoff.packages import constants
+from kerckhoff.packages.operations.s3_utils import get_public_link
 
 
 class ParsedContent:
@@ -96,7 +97,7 @@ class GoogleDriveFile:
         return GoogleDriveFileSerializer(self).data
 
     @classmethod
-    def from_json(cls, serialized: dict):
+    def from_json(cls, serialized: dict) -> "GoogleDriveFile":
         return {
             GoogleDriveTextFile._code: GoogleDriveTextFile.from_json,
             GoogleDriveImageFile._code: GoogleDriveImageFile.from_json,
@@ -168,6 +169,8 @@ class GoogleDriveImageFile(GoogleDriveFile):
         super().__init__(underlying, from_serialized)
         if from_serialized:
             self.thumbnail_link = underlying["thumbnail_link"]
+            self.s3_key = underlying.get("s3_key")
+            self.s3_bucket = underlying.get("s3_bucket")
         else:
             self.thumbnail_link = underlying["thumbnailLink"]
 
@@ -176,8 +179,7 @@ class GoogleDriveImageFile(GoogleDriveFile):
 
     def to_json(self, **kwargs) -> dict:
         if kwargs.get("refresh") and self.s3_key and self.s3_bucket:
-            image_utils: "ImageUtils" = kwargs["image_utils"]
-            self.src_large = image_utils.get_public_link(self)
+            self.src_large = get_public_link(self)
         return GoogleDriveImageFileSerializer(self).data
 
     @classmethod
@@ -189,7 +191,7 @@ class GoogleDriveImageFile(GoogleDriveFile):
         res = image_utils.snapshot_image(self)
         self.s3_key = res["key"]
         self.s3_bucket = res["bucket"]
-        return self.to_json(refresh=True, image_utils=image_utils)
+        return self.to_json(refresh=True)
 
 
 class S3Item:

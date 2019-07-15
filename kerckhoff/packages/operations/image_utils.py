@@ -66,19 +66,6 @@ class ImageUtils:
         else:
             raise FileNotFoundError
 
-    def get_public_link(
-        self, google_drive_image_file: "GoogleDriveImageFile", duration=3600
-    ):
-        s3 = get_s3_client()
-        return s3.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": google_drive_image_file.s3_bucket,
-                "Key": google_drive_image_file.s3_key,
-            },
-            ExpiresIn=duration,
-        )
-
     def _compress_image(self, image_path, quality=95, mimetype="image/jpeg"):
         """Compresses image and replaces original image
 
