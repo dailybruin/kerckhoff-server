@@ -31,24 +31,6 @@ class ParsedContent:
             elif format == FORMAT_AML:
                 parser = Parser()
                 aml_content = parser.parse(self.raw)
-
-                # HACK: Fixes a bad bug in the archieml parser
-                for key, value in aml_content.items():
-                    if isinstance(value, list):
-                        for index, item in enumerate(value):
-                            if isinstance(item, dict):
-                                if (
-                                    item.get("type") is None
-                                    and item.get("value")
-                                    and isinstance(value[index - 1], dict)
-                                    and value[index - 1].get("type")
-                                ):
-                                    aml_content[key][index - 1]["value"] = item["value"]
-                                    aml_content[key][index] = None
-                        aml_content[key] = [
-                            i for i in aml_content[key] if i is not None
-                        ]
-
                 self.html = ""
                 self.data = aml_content
             else:
