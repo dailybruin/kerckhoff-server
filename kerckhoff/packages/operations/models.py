@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
-import archieml
 import frontmatter
 from django.utils.dateparse import parse_datetime
 from markdown import Markdown
 from rest_framework import serializers
 
 from kerckhoff.packages import constants
+from kerckhoff.packages.operations.parser import Parser
 from kerckhoff.packages.operations.s3_utils import get_public_link
 
 
@@ -29,25 +29,8 @@ class ParsedContent:
                 self.html = MarkdownParser.convert(file.content)
                 self.data = file.metadata
             elif format == FORMAT_AML:
-                aml_content = archieml.loads(self.raw)
-
-                # HACK: Fixes a bad bug in the archieml parser
-                for key, value in aml_content.items():
-                    if isinstance(value, list):
-                        for index, item in enumerate(value):
-                            if isinstance(item, dict):
-                                if (
-                                    item.get("type") is None
-                                    and item.get("value")
-                                    and isinstance(value[index - 1], dict)
-                                    and value[index - 1].get("type")
-                                ):
-                                    aml_content[key][index - 1]["value"] = item["value"]
-                                    aml_content[key][index] = None
-                        aml_content[key] = [
-                            i for i in aml_content[key] if i is not None
-                        ]
-
+                parser = Parser()
+                aml_content = parser.parse(self.raw)
                 self.html = ""
                 self.data = aml_content
             else:
