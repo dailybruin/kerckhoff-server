@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
-import archieml
 import frontmatter
 from django.utils.dateparse import parse_datetime
 from markdown import Markdown
 from rest_framework import serializers
 
 from kerckhoff.packages import constants
+from kerckhoff.packages.operations.parser import Parser
 
 
 class ParsedContent:
@@ -28,7 +28,8 @@ class ParsedContent:
                 self.html = MarkdownParser.convert(file.content)
                 self.data = file.metadata
             elif format == FORMAT_AML:
-                aml_content = archieml.loads(self.raw)
+                parser = Parser()
+                aml_content = parser.parse(self.raw)
 
                 # HACK: Fixes a bad bug in the archieml parser
                 for key, value in aml_content.items():
