@@ -89,6 +89,17 @@ class PackageSet(models.Model):
 
 
 class Package(models.Model):
+
+    PUBLISHED = "pub"
+    READY = "rdy"
+    INPROGRESS = "wip"
+
+    PACKAGE_STATES = (
+        (PUBLISHED, "Published"),
+        (READY, "Ready"),
+        (INPROGRESS, "In Progress"),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.CharField(max_length=64, validators=[validate_slug_with_dots])
     package_set = models.ForeignKey(PackageSet, on_delete=models.PROTECT)
@@ -98,6 +109,7 @@ class Package(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    state = models.CharField(choices=PACKAGE_STATES, default=INPROGRESS, max_length=3)
     tags = TaggableManager()
 
     # Versioning
@@ -227,6 +239,15 @@ class Package(models.Model):
             self.save()
             return package_version
 
+    def publish(self):
+        # TODO: this is only for demo purposes, the actual publish needs to be significantly more customizable
+        integrations = self.package_set.integration_set.all()
+        for integration in integrations:
+            if integration.auth_data.active:
+                integration.publish(self.latest_version)
+        self.state = self.PUBLISHED
+        self.save()
+
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
@@ -257,8 +278,16 @@ class PackageItem(models.Model):
     data_type = models.CharField(max_length=3, choices=DTYPE_CHOICES, default=TEXT)
     data = JSONField(blank=True, default=dict)
     file_name = models.CharField(max_length=64)
-    mime_types = models.CharField(max_length=64)
+    mime_type = models.CharField(max_length=64)
     tags = TaggableManager()
+
+    def refresh(self):
+        """
+        Updates the signed links (if necessary) for any of the items
+        """
+        file = GoogleDriveFile.from_json(self.data)
+        self.data = file.to_json(refresh=True)
+        return self
 
     @classmethod
     def create_from_google_drive_item(
@@ -268,7 +297,7 @@ class PackageItem(models.Model):
             data_type=google_drive_file.get_data_type(),
             data=google_drive_file.snapshot(image_utils=ImageUtils(user)),
             file_name=google_drive_file.title,
-            mime_types=google_drive_file.mimeType,
+            mime_type=google_drive_file.mimeType,
         )
         pi.save()
         return pi

@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import mimetypes
 
 from PIL import Image
 from django.conf import settings
@@ -41,7 +42,8 @@ class ImageUtils:
         res = op.download_item(google_drive_image_file)
         if res.ok:
             # ToDo: Handle non-jpeg
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            ext = mimetypes.guess_extension(google_drive_image_file.mimeType)
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
                 image_path = f.name
                 for chunk in res:
                     f.write(chunk)
@@ -63,19 +65,6 @@ class ImageUtils:
                 }
         else:
             raise FileNotFoundError
-
-    def get_public_link(
-        self, google_drive_image_file: "GoogleDriveImageFile", duration=3600
-    ):
-        s3 = get_s3_client()
-        return s3.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": google_drive_image_file.s3_bucket,
-                "Key": google_drive_image_file.s3_key,
-            },
-            ExpiresIn=duration,
-        )
 
     def _compress_image(self, image_path, quality=95, mimetype="image/jpeg"):
         """Compresses image and replaces original image

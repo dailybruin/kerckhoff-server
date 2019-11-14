@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
+from kerckhoff.integrations.serializers import IntegrationSerializer
 from .models import PackageSet, Package, PackageVersion, PackageItem
 from kerckhoff.users.serializers import UserSerializer, SimpleUserSerializer
 
@@ -14,6 +15,18 @@ class PackageSetSerializer(serializers.ModelSerializer):
         model = PackageSet
         fields = ("id", "slug", "metadata", "created_by", "created_at", "updated_at")
         read_only_fields = ("id", "created_by", "created_at", "updated_at")
+
+
+class PackageSetDetailedSerializer(PackageSetSerializer):
+    integrations = IntegrationSerializer(
+        many=True, read_only=True, source="integration_set"
+    )
+
+    class Meta(PackageSetSerializer.Meta):
+        fields = PackageSetSerializer.Meta.fields + ("integrations",)
+        read_only_fields = PackageSetSerializer.Meta.read_only_fields + (
+            "integrations",
+        )
 
 
 class PackageSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -30,6 +43,7 @@ class PackageSerializer(TaggitSerializer, serializers.ModelSerializer):
             "package_set",
             "metadata",
             "cached",
+            "state",
             "last_fetched_date",
             "created_by",
             "created_at",
@@ -52,6 +66,19 @@ class PackageSerializer(TaggitSerializer, serializers.ModelSerializer):
                 queryset=Package.objects.all(), fields=("slug", "package_set")
             )
         ]
+
+
+class PackageItemSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tags = TagListSerializerField()
+
+    def to_representation(self, instance: PackageItem):
+        instance = instance.refresh()
+        return super().to_representation(instance)
+
+    class Meta:
+        model = PackageItem
+        fields = ("id", "data_type", "data", "file_name", "mime_type", "tags")
+        read_only_fields = ("id", "data_type")
 
 
 class PackageVersionSerializer(serializers.ModelSerializer):
@@ -78,6 +105,16 @@ class PackageVersionSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "updated_at",
+        )
+
+
+class PackageVersionWithItemsSerializer(PackageVersionSerializer):
+    packageitem_set = PackageItemSerializer(many=True)
+
+    class Meta(PackageVersionSerializer.Meta):
+        fields = PackageVersionSerializer.Meta.fields + ("packageitem_set",)
+        read_only_fields = PackageVersionSerializer.Meta.read_only_fields + (
+            "packageitem_set",
         )
 
 
@@ -114,32 +151,20 @@ class CreatePackageVersionSerializer(PackageVersionSerializer):
         fields = PackageVersionSerializer.Meta.fields + ("included_items",)
 
 
-class PackageItemSerializer(TaggitSerializer, serializers.ModelSerializer):
-    package_versions = serializers.StringRelatedField(many=True)
-    tags = TagListSerializerField()
-
-    class Meta:
-        model = PackageItem
-        fields = (
-            "id",
-            "package_versions",
-            "data_type",
-            "data",
-            "file_name",
-            "mime_types",
-            "tags",
-        )
-        read_only_fields = ("id", "package_versions", "data_type")
-
-
 class RetrievePackageSerializer(PackageSerializer):
     version_data = serializers.SerializerMethodField()
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if ret.get("version_data") is not None:
+            ret["cached"] = None
+        return ret
 
     def get_version_data(self, obj: Package):
         version_number = self.context["version_number"]
         package_version = obj.get_version(version_number)
         if package_version is not None:
-            data = PackageVersionSerializer(package_version).data
+            data = PackageVersionWithItemsSerializer(package_version).data
         else:
             data = None
         return data

@@ -34,6 +34,7 @@ class Common(Configuration):
         "kerckhoff.packages",
         "kerckhoff.taskqueues",
         "kerckhoff.comments",
+        "kerckhoff.integrations",
     )
 
     # https://docs.djangoproject.com/en/2.0/topics/http/middleware/
@@ -81,6 +82,13 @@ class Common(Configuration):
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         }
     }
+
+    # Taskqueue Backend
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND = "django-db"
+    CELERY_ACCEPT_CONTENT = ["application/json"]
+    CELERY_RESULT_SERIALIZER = "json"
+    CELERY_TASK_SERIALIZER = "json"
 
     # General
     APPEND_SLASH = False
@@ -225,6 +233,14 @@ class Common(Configuration):
         ],
     }
 
+    # Integrations
+    INTEGRATIONS = {
+        "WPC": {
+            "CLIENT_ID": os.getenv("WPC_CLIENT_ID"),
+            "CLIENT_SECRET": os.getenv("WPC_CLIENT_SECRET"),
+        }
+    }
+
     # AWS
     AWS_CONFIG = {
         "ACCESS_KEY": os.getenv("AWS_ACCESS_KEY_ID"),
@@ -232,9 +248,3 @@ class Common(Configuration):
         "REGION": os.getenv("AWS_REGION"),
         "MEDIA_BUCKET_NAME": os.getenv("AWS_S3_MEDIA_BUCKET"),
     }
-
-    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = "django-db"
-    CELERY_ACCEPT_CONTENT = ["application/json"]
-    CELERY_RESULT_SERIALIZER = "json"
-    CELERY_TASK_SERIALIZER = "json"

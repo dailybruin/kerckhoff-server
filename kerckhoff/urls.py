@@ -20,6 +20,7 @@ from .packages.views import (
     PackageCreateAndListViewSet,
 )
 from .comments.views import CommentViewSet
+from .integrations.views import IntegrationOAuthView
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet)
@@ -72,6 +73,7 @@ urlpatterns = [
     path("api/v1/", include(router.urls)),
     path("api/v1/", include(package_set_router.urls)),
     path("api/v1/", include(package_router.urls)),
+    path("api/v1/integrations/", IntegrationOAuthView.as_view()),
     path("api-oauth/", include(auth_urlpatterns)),
     path("api-token-auth/", views.obtain_auth_token),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
