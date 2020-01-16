@@ -241,6 +241,7 @@ class Package(models.Model):
 
     def publish(self):
         # TODO: this is only for demo purposes, the actual publish needs to be significantly more customizable
+        # print("Publishing to somewhere")
         integrations = self.package_set.integration_set.all()
         for integration in integrations:
             if integration.auth_data.active:
