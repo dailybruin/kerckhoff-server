@@ -23,6 +23,11 @@ from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 
+from datetime import datetime
+from base64 import b64encode
+from dominate.tags import *
+import requests
+
 User: AppUser = get_user_model()
 
 slug_with_dots_re = re.compile(r"^[-a-zA-Z0-9_.]+\Z")
@@ -240,15 +245,46 @@ class Package(models.Model):
             return package_version
 
     def publish(self):
-        # TODO: this is only for demo purposes, the actual publish needs to be significantly more customizable
-        # print("Publishing to somewhere")
-        integrations = self.package_set.integration_set.all()
-        for integration in integrations:
-            if integration.auth_data.active:
-                integration.publish(self.latest_version)
-        self.state = self.PUBLISHED
-        self.save()
+        #TODO: Finalize AML format
+        #TODO: Post format for non-paragraphs e.g. quotes
 
+        packages_in_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
+        for file in packages_in_latest_version:
+            if(file.file_name == "data.aml"):
+                json_data = file.data
+
+        content_string = ""
+        for item in json_data["content_rich"]["data"]["content"]:
+            if(item["type"] == "paragraph"):
+                content_string += str(p(item["data"]))
+
+        #Test site credentials
+        user = 'dailybruinonline'
+        pw = 'HrVy ZOsL nMr7 Vhla V7qo VgDA'
+
+        #Test site URL
+        url = 'http://165.227.25.233'
+
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+
+        data = {
+            'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            'title': 'Kerckhoff test',
+            'slug': 'rest-api-1',
+            'status': 'publish',
+            'content': content_string,
+            'author': '1',
+            'excerpt': 'Exceptional post!',
+        }
+
+        #BASIC AUTH CODE
+        auth_string = f"{user}:{pw}"
+        auth_data = auth_string.encode("utf-8")
+        headers["Authorization"] = "Basic " + b64encode(auth_data).decode("utf-8")
+        response = requests.post(f"{url}/wp-json/wp/v2/posts", headers=headers, data=data)
+        json_response = response.json()
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
