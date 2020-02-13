@@ -23,9 +23,10 @@ from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 
-from datetime import datetime
 from base64 import b64encode
 from dominate.tags import *
+from html import unescape
+from os import getenv
 import requests
 
 User: AppUser = get_user_model()
@@ -245,46 +246,61 @@ class Package(models.Model):
             return package_version
 
     def publish(self):
-        #TODO: Finalize AML format
-        #TODO: Post format for non-paragraphs e.g. quotes
+        """
+        Publishes article data to WordPress using REST API
+            - Sends article data as a HTML string
+            - Authentication using WordPress Application Passwords
+        """
 
-        packages_in_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
-        for file in packages_in_latest_version:
+        #Extracting AML data
+        packages_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
+        for file in packages_latest_version:
             if(file.file_name == "data.aml"):
                 json_data = file.data
+        aml_data = json_data["content_rich"]["data"]
 
+        #HTML string generation using dominate
         content_string = ""
-        for item in json_data["content_rich"]["data"]["content"]:
-            if(item["type"] == "paragraph"):
-                content_string += str(p(item["data"]))
+        for item in aml_data["content"]:
+            if(item["type"] == "p"):
+                content_string += str(p(unescape(item["value"])))
+            elif(item["type"] == "aside"):
+                content_string += str(aside(unescape(item["value"])))
+            elif(item["type"] == "embed_instagram"):
+                content_string += "\n" + item["value"] + "\n"
+            elif(item["type"] == "embed_twitter"):
+                content_string += "\n" + item["value"] + "\n"
 
-        #Test site credentials
-        user = 'dailybruinonline'
-        pw = 'HrVy ZOsL nMr7 Vhla V7qo VgDA'
-
-        #Test site URL
+        #Site auth info -- from /.env
+        user = getenv("WORDPRESS_API_USER")
+        pw = getenv("WORDPRESS_API_PW")
         url = 'http://165.227.25.233'
 
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-
-        data = {
-            'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            'title': 'Kerckhoff test',
-            'slug': 'rest-api-1',
-            'status': 'publish',
-            'content': content_string,
-            'author': '1',
-            'excerpt': 'Exceptional post!',
-        }
-
-        #BASIC AUTH CODE
+        #Post params
         auth_string = f"{user}:{pw}"
         auth_data = auth_string.encode("utf-8")
-        headers["Authorization"] = "Basic " + b64encode(auth_data).decode("utf-8")
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': "Basic " + b64encode(auth_data).decode("utf-8")
+        }
+
+        #Search for author id using name
+        author_json = requests.get(f"{url}/wp-json/wp/v2/users?search={aml_data['author']}").json()
+        author_id = author_json[0]["id"]
+
+        data = {
+            'title': aml_data["headline"],
+            'slug': self.slug,
+            'status': 'publish',
+            'content': content_string,
+            'author': str(author_id),
+            'excerpt': aml_data["excerpt"]
+        }
+
+        #REST API post
         response = requests.post(f"{url}/wp-json/wp/v2/posts", headers=headers, data=data)
         json_response = response.json()
+
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
