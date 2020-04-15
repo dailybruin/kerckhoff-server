@@ -63,7 +63,7 @@ class GoogleDriveFile:
             self.drive_id = underlying["id"]
             self.altLink = underlying["alternateLink"]
             self.last_modified_date = parse_datetime(underlying["modifiedDate"])
-            self.last_modified_by = underlying["lastModifyingUser"]["emailAddress"]
+            self.last_modified_by = underlying["lastModifyingUser"]["displayName"]
 
         self._underlying = underlying
         self.title = underlying["title"]

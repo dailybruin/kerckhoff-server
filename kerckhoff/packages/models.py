@@ -19,15 +19,16 @@ from kerckhoff.packages.operations.models import (
     GoogleDriveTextFile,
     FORMAT_MD,
 )
+from kerckhoff.packages.operations.wordpress_utils import WordpressIntegration
+import pprint
 from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
 
 from base64 import b64encode
-from dominate.tags import *
-from html import unescape
 from os import getenv
 import requests
+import tempfile
 
 User: AppUser = get_user_model()
 
@@ -252,54 +253,22 @@ class Package(models.Model):
             - Authentication using WordPress Application Passwords
         """
 
-        #Extracting AML data
+        #Extracting files from package version
         packages_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
+        img_urls = {}
         for file in packages_latest_version:
             if(file.file_name == "data.aml"):
                 json_data = file.data
+            if("jpg" in file.file_name or "jpeg" in file.file_name
+               or "png" in file.file_name):
+                img_urls[file.file_name] = file.data["src_large"]
         aml_data = json_data["content_rich"]["data"]
+        aml_data["slug"] = self.slug
 
-        #HTML string generation using dominate
-        content_string = ""
-        for item in aml_data["content"]:
-            if(item["type"] == "p"):
-                content_string += str(p(unescape(item["value"])))
-            elif(item["type"] == "aside"):
-                content_string += str(aside(unescape(item["value"])))
-            elif(item["type"] == "embed_instagram"):
-                content_string += "\n" + item["value"] + "\n"
-            elif(item["type"] == "embed_twitter"):
-                content_string += "\n" + item["value"] + "\n"
+        print(img_urls)
 
-        #Site auth info -- from /.env
-        user = getenv("WORDPRESS_API_USER")
-        pw = getenv("WORDPRESS_API_PW")
-        url = 'http://165.227.25.233'
-
-        #Post params
-        auth_string = f"{user}:{pw}"
-        auth_data = auth_string.encode("utf-8")
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': "Basic " + b64encode(auth_data).decode("utf-8")
-        }
-
-        #Search for author id using name
-        author_json = requests.get(f"{url}/wp-json/wp/v2/users?search={aml_data['author']}").json()
-        author_id = author_json[0]["id"]
-
-        data = {
-            'title': aml_data["headline"],
-            'slug': self.slug,
-            'status': 'publish',
-            'content': content_string,
-            'author': str(author_id),
-            'excerpt': aml_data["excerpt"]
-        }
-
-        #REST API post
-        response = requests.post(f"{url}/wp-json/wp/v2/posts", headers=headers, data=data)
-        json_response = response.json()
+        wp = WordpressIntegration(aml_data, img_urls)
+        wp.publish()
 
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
