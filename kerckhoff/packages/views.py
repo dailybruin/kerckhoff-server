@@ -99,9 +99,12 @@ class PackageViewSet(
 
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def publish(self, request, **kwargs):
-        package = self.get_object()
-        package.publish()
-        return Response(status=200)
+        try:
+            package = self.get_object()
+            package.publish()
+            return Response(status=200)
+        except Exception as err:
+            return Response(status=400, data=err.message)
 
     @action(
         methods=["post"], detail=True, serializer_class=CreatePackageVersionSerializer
