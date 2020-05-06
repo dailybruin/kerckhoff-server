@@ -55,7 +55,7 @@ class GoogleDriveOperations:
         """
 
         payload = {
-            "q": f"'{gdrive_folder_id}' in parents",
+            "q": f"'{gdrive_folder_id}' in parents and trashed=false",
             "orderBy": "title",
             "maxResults": 100,
         }
