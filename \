@@ -24,8 +24,6 @@ class BadRequestError(CustomError):
 class NoAmlError(CustomError):
     pass
 
-class BadAmlError(CustomError):
-    pass
 
 """
 Helper class for handling Wordpress REST API publishing
@@ -46,7 +44,6 @@ Constructor Params schema:
     {
         <file name> : <s3 url>,
     }
-
 """
 class WordpressIntegration:
     def __init__(self, aml_data:dict, img_urls:dict):
@@ -66,7 +63,6 @@ class WordpressIntegration:
             'Authorization': "Basic " + b64encode(auth_data).decode("utf-8")
         }
 
-
     def publish(self):
         """
         Publishes article data to WordPress using REST API
@@ -80,70 +76,47 @@ class WordpressIntegration:
         coverimg = self.aml_data["coverimg"]
 
         #Content generation
+        #TODO: No support for in-paragraph images + captions yet
         #TODO: No support for related articles yet
-        #TODO: Support for categories and tags
         content_string = self.get_html_string()
         author_id = self.get_author_id()
-
-        #AML metadata
-        try:
-            coverimg = self.aml_data["coverimg"]
-            covercaption = self.aml_data["covercaption"]
-            headline = self.aml_data["headline"]
-            slug = self.aml_data["slug"]
-            excerpt = self.aml_data["excerpt"]
-        except KeyError as err:
-            raise BadAmlError(f"Missing fields at top of AML: {err}")
-
-        self.upload_caption(self.img_data[coverimg]["id"], covercaption)
+        coverimg = self.aml_data["coverimg"]
+        html = self.img_data[coverimg]["html"]
+        pp.pprint(html)
         data = {
-            "title": headline,
-            "slug": slug,
-            "status": 'publish',
-            "content": content_string,
-            "author": str(author_id),
-            "excerpt": excerpt,
-            "featured_media": str(self.img_data[coverimg]["id"]),
-            "categories": "1433,16717",
+            'title': self.aml_data["headline"],
+            'slug': self.aml_data["slug"],
+            'status': 'publish',
+            'content': content_string + f"[caption id=\"attachment_372344\" align=\"aligncenter\" width=\"207\"]{html}This is an image.[/caption]",
+            'author': str(author_id),
+            'excerpt': self.aml_data["excerpt"],
+            'featured_media': str(self.img_data[coverimg]["id"])
         }
 
         #REST API post
         #TODO: Improve this error handling (feedback to frontend)
         response = requests.post(f"{self.url}/wp-json/wp/v2/posts", headers=self.basic_auth_header, data=data)
         if not response.ok:
-            print(response)
-            raise BadRequestError("Failed to send data to WordPress")
+            raise BadRequestError("Failed to publish to WordPress")
         logger.info("Publish Response: ", response)
-
 
     def get_html_string(self) -> str:
         """
         Converts AML data to HTML string using Dominate
         """
+        #TODO: No support for in-paragraph images + captions yet
         #TODO: No support for related articles yet
         content_string = ""
         for item in self.aml_data["content"]:
-            try:
-                if item["type"] == "text":
-                    content_string += str(p(unescape(item["value"])))
-                elif item["type"] == "aside":
-                    content_string += str(aside(unescape(item["value"])))
-                elif item["type"] == "embed_instagram":
-                    content_string += "\n" + item["value"] + "\n"
-                elif item["type"] == "embed_twitter":
-                    content_string += "\n" + item["value"] + "\n"
-                elif item["type"] == "embed_image":
-                    file_name = item["value"]["src"]
-                    caption = item["value"]["caption"]
-                    html = self.img_data[file_name]["html"]
-                    content_string += f"[caption align=\"aligncenter\" width=\"207\"]{html}{caption}[/caption]"
-                    self.upload_caption(self.img_data[file_name]["id"], caption)
-                else:
-                    raise BadAmlError(f"Invalid content item type {item['type']}")
-            except KeyError as err:
-                raise BadAmlError(f"Invalid AML item: {err}")
+            if(item["type"] == "text"):
+                content_string += str(p(unescape(item["value"])))
+            elif(item["type"] == "aside"):
+                content_string += str(aside(unescape(item["value"])))
+            elif(item["type"] == "embed_instagram"):
+                content_string += "\n" + item["value"] + "\n"
+            elif(item["type"] == "embed_twitter"):
+                content_string += "\n" + item["value"] + "\n"
         return content_string
-
 
     def get_author_id(self) -> int:
         """
@@ -153,16 +126,6 @@ class WordpressIntegration:
         author_json = requests.get(f"{self.url}/wp-json/wp/v2/users?search={author}").json()
         author_id = author_json[0]["id"]
         return author_id
-
-
-    def add_image_caption(self, file_name:str, caption:str):
-        """
-        Uploads image caption to Wordpress
-        """
-        data = {
-            "caption": caption
-        }
-
 
     def upload_img_from_s3(self, img_url:str, file_name:str) -> dict:
         """
@@ -203,10 +166,3 @@ class WordpressIntegration:
                 f.flush()
         else:
             raise BadRequestError(f"Unable to retrieve image {file_name} from S3")
-
-    def upload_caption(self, id, caption:str):
-        data = {
-            "caption": caption
-        }
-        headers = self.basic_auth_header
-        requests.post(f"{self.url}/wp-json/wp/v2/media/{id}", headers=headers, data=data)

@@ -104,6 +104,7 @@ class PackageViewSet(
             package.publish()
             return Response(status=200)
         except Exception as err:
+            print("Exception returned by Wordpress Utils:", err)
             return Response(status=400, data=err.message)
 
     @action(
