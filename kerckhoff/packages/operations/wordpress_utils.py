@@ -8,24 +8,18 @@ import requests
 import logging
 from dominate.tags import *
 
+from django.core.exceptions import (
+    MultipleObjectsReturned,
+    ObjectDoesNotExist,
+)
+from kerckhoff.packages.exceptions import (
+    PublishError
+)
+import kerckhoff.packages.models as models
+
 logger = logging.getLogger(__name__)
 pp = pprint.PrettyPrinter(indent=2) #for debugging
 
-class CustomError(Exception):
-    def __init__(self, message):
-       self.message = message
-
-    def message(self):
-      return repr(self.message)
-
-class BadRequestError(CustomError):
-    pass
-
-class NoAmlError(CustomError):
-    pass
-
-class BadAmlError(CustomError):
-    pass
 
 """
 Helper class for handling Wordpress REST API publishing
@@ -51,7 +45,7 @@ Constructor Params schema:
 class WordpressIntegration:
     def __init__(self, aml_data:dict, img_urls:dict):
         if aml_data == None:
-            raise NoAmlError("No AML file specified")
+            raise PublishError("No AML file specified")
         self.aml_data = aml_data
         self.img_urls = img_urls
 
@@ -73,29 +67,42 @@ class WordpressIntegration:
             - Sends article data as a HTML string
             - Authentication using WordPress Application Passwords
         """
-        #Upload imgs to Wordpress + retrieve Wordpress metadata
-        self.img_data = {}
-        for img in self.img_urls:
-            self.img_data[img] = self.upload_img_from_s3(self.img_urls[img], img)
-        coverimg = self.aml_data["coverimg"]
 
-        #Content generation
-        #TODO: No support for related articles yet
-        #TODO: Support for categories and tags
-        content_string = self.get_html_string()
-        author_id = self.get_author_id()
-
-        #AML metadata
+        print("Parsing top level data...")
+        #AML metadata (top level tags)
         try:
+            author = self.aml_data["author"]
             coverimg = self.aml_data["coverimg"]
             covercaption = self.aml_data["covercaption"]
             headline = self.aml_data["headline"]
             slug = self.aml_data["slug"]
             excerpt = self.aml_data["excerpt"]
+            content = self.aml_data["content"]
+            categories = self.aml_data["categories"].split(",")
         except KeyError as err:
-            raise BadAmlError(f"Missing fields at top of AML: {err}")
+            raise PublishError(f"Missing top-level AML field: {err}")
 
-        self.upload_caption(self.img_data[coverimg]["id"], covercaption)
+        print("Retrieving IDs...")
+        #Convert metadata to Wordpress UUIDs
+        author_id = self.get_author_id(author)
+        category_id_string = ""
+        for i, category in enumerate(categories):
+            category = category.strip()
+            category_id_string += str(self.get_category_id(category))
+            if i < len(categories) - 1:
+                category_id_string += ","
+
+        print("Uploading images...")
+        #Upload imgs to Wordpress + retrieve Wordpress metadata
+        self.img_data = {}
+        for img in self.img_urls:
+            self.img_data[img] = self.upload_img_from_s3(self.img_urls[img], img)
+
+        #Content generation
+        #TODO: No support for related articles yet
+        #TODO: Support for categories and tags
+        content_string = self.get_html_string(content)
+
         data = {
             "title": headline,
             "slug": slug,
@@ -104,25 +111,35 @@ class WordpressIntegration:
             "author": str(author_id),
             "excerpt": excerpt,
             "featured_media": str(self.img_data[coverimg]["id"]),
-            "categories": "1433,16717",
+            "categories": category_id_string,
         }
 
+        print("Publishing...")
         #REST API post
         #TODO: Improve this error handling (feedback to frontend)
-        response = requests.post(f"{self.url}/wp-json/wp/v2/posts", headers=self.basic_auth_header, data=data)
+        requests.post(  #Wordpress caption uploading
+            f"{self.url}/wp-json/wp/v2/media/{self.img_data[coverimg]['id']}",
+            headers=self.basic_auth_header,
+            data={"caption": covercaption}
+        )
+        response = requests.post(  #Main article uploading
+            f"{self.url}/wp-json/wp/v2/posts",
+            headers=self.basic_auth_header,
+            data=data
+        )
         if not response.ok:
             print(response)
-            raise BadRequestError("Failed to send data to WordPress")
+            raise PublishError("Failed to send data to WordPress")
         logger.info("Publish Response: ", response)
 
 
-    def get_html_string(self) -> str:
+    def get_html_string(self, content:dict) -> str:
         """
         Converts AML data to HTML string using Dominate
         """
         #TODO: No support for related articles yet
         content_string = ""
-        for item in self.aml_data["content"]:
+        for item in content:
             try:
                 if item["type"] == "text":
                     content_string += str(p(unescape(item["value"])))
@@ -137,31 +154,23 @@ class WordpressIntegration:
                     caption = item["value"]["caption"]
                     html = self.img_data[file_name]["html"]
                     content_string += f"[caption align=\"aligncenter\" width=\"207\"]{html}{caption}[/caption]"
-                    self.upload_caption(self.img_data[file_name]["id"], caption)
+                    requests.post(  #Wordpress caption uploading
+                        f"{self.url}/wp-json/wp/v2/media/{self.img_data[file_name]['id']}",
+                        headers=self.basic_auth_header,
+                        data={"caption": caption}
+                    )
                 else:
-                    raise BadAmlError(f"Invalid content item type {item['type']}")
+                    raise PublishError(f"Invalid content item type {item['type']}")
             except KeyError as err:
-                raise BadAmlError(f"Invalid AML item: {err}")
+                raise PublishError(f"Invalid AML item: {err}")
         return content_string
 
 
-    def get_author_id(self) -> int:
-        """
-        Performs REST API GET to return author id in Wordpress based on name
-        """
-        author = self.aml_data["author"]
-        author_json = requests.get(f"{self.url}/wp-json/wp/v2/users?search={author}").json()
-        author_id = author_json[0]["id"]
-        return author_id
+    def get_author_id(self, author_name) -> int:
+        return self.get_id("author", author_name)
 
-
-    def add_image_caption(self, file_name:str, caption:str):
-        """
-        Uploads image caption to Wordpress
-        """
-        data = {
-            "caption": caption
-        }
+    def get_category_id(self, cat_name) -> int:
+        return self.get_id("category", cat_name)
 
 
     def upload_img_from_s3(self, img_url:str, file_name:str) -> dict:
@@ -199,14 +208,50 @@ class WordpressIntegration:
                     err_message = f"Unable to upload image {file_name} to WordPress"
                     logger.info(err_message)
                     logger.info(f"{wp_res}")
-                    raise BadRequestError(err_message)
+                    raise PublishError(err_message)
                 f.flush()
         else:
-            raise BadRequestError(f"Unable to retrieve image {file_name} from S3")
+            raise PublishError(f"Unable to retrieve image {file_name} from S3")
 
-    def upload_caption(self, id, caption:str):
-        data = {
-            "caption": caption
-        }
-        headers = self.basic_auth_header
-        requests.post(f"{self.url}/wp-json/wp/v2/media/{id}", headers=headers, data=data)
+
+    def get_id(self, model:str, thing_name:str) -> int:
+        """
+        "Template function" - runs with multiple model types
+
+        Retrieves id of the specifed model stored in database.
+        If not in database, retrieve from API and store.
+        """
+        #Type specification
+        if model == "author":
+            WpModel = models.WordpressAuthor
+            api_end = f"{self.url}/wp-json/wp/v2/users?name={thing_name}"
+        elif model == "category":
+            WpModel = models.WordpressCategory
+            api_end = f"{self.url}/wp-json/wp/v2/categories?slug={thing_name}"
+
+        if thing_name == "":
+            raise PublishError(f"No {model} name specified")
+
+        try:
+            entry = WpModel.objects.get(name__iexact=thing_name)
+        except MultipleObjectsReturned as err:
+            raise PublishError(f"Multiple {model}s with {thing_name}")
+        except ObjectDoesNotExist:
+            #Retrieve from API
+            req_json = requests.get(f"{api_end}").json()
+            try:
+                obj = req_json[0]
+            except IndexError:
+                raise PublishError(f"No {model} named {thing_name}")
+
+            try:
+                existing = WpModel.objects.get(wp_id=obj["id"])
+                entry = existing
+            except ObjectDoesNotExist:
+                if model == "author":
+                    entry = WpModel(wp_id=obj["id"], name=obj["name"])
+                elif model == "category":
+                    entry = WpModel(wp_id=obj["id"], name=obj["slug"])
+                entry.save()
+
+        return entry.wp_id

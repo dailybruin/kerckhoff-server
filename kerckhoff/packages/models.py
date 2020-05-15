@@ -270,6 +270,21 @@ class Package(models.Model):
         wp = WordpressIntegration(aml_data, img_urls)
         wp.publish()
 
+#Models facilitating WordPress API calls
+class WordpressCategory(models.Model):
+    name = models.CharField(max_length=128)
+    wp_id = models.DecimalField(unique=True, max_digits=10, decimal_places=0)
+
+    def __str__(self):
+        return self.name
+
+class WordpressAuthor(models.Model):
+    name = models.CharField(max_length=128)
+    wp_id = models.DecimalField(unique=True, max_digits=10, decimal_places=0)
+
+    def __str__(self):
+        return self.name
+
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects
 class PackageVersion(models.Model):
