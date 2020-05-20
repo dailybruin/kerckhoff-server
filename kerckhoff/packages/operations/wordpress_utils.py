@@ -6,8 +6,10 @@ from html import unescape
 
 import requests
 import logging
+import bleach
 from dominate.tags import *
 
+from django.utils.html import escape
 from django.core.exceptions import (
     MultipleObjectsReturned,
     ObjectDoesNotExist,
@@ -145,11 +147,11 @@ class WordpressIntegration:
                     content_string += str(p(unescape(item["value"])))
                 elif item["type"] == "aside":
                     content_string += str(aside(unescape(item["value"])))
-                elif item["type"] == "embed_instagram":
-                    content_string += "\n" + item["value"] + "\n"
-                elif item["type"] == "embed_twitter":
-                    content_string += "\n" + item["value"] + "\n"
-                elif item["type"] == "embed_image":
+                elif item["type"] == "embed_instagram" or item["type"] == "embed_twitter":
+                    #Strip all tags and escape to get the embed link
+                    text = bleach.clean(item["value"], strip=True, tags=[])
+                    content_string += "\n" + escape(text) + "\n"
+                elif item["type"] == "image":
                     file_name = item["value"]["src"]
                     caption = item["value"]["caption"]
                     html = self.img_data[file_name]["html"]
@@ -199,6 +201,7 @@ class WordpressIntegration:
                 if wp_res.ok:
                     res_json = wp_res.json()
                     logger.info(f"Uploaded image to wordpress with result {wp_res}")
+                    print(f"{file_name} uploaded")
                     return {
                         "id": res_json["id"],
                         "html": res_json["description"]["rendered"],
@@ -214,7 +217,7 @@ class WordpressIntegration:
             raise PublishError(f"Unable to retrieve image {file_name} from S3")
 
 
-    def get_id(self, model:str, thing_name:str) -> int:
+    def get_id(self, model:str, object_name:str) -> int:
         """
         "Template function" - runs with multiple model types
 
@@ -224,29 +227,30 @@ class WordpressIntegration:
         #Type specification
         if model == "author":
             WpModel = models.WordpressAuthor
-            api_end = f"{self.url}/wp-json/wp/v2/users?name={thing_name}"
+            api_end = f"{self.url}/wp-json/wp/v2/users?search={object_name}"
         elif model == "category":
             WpModel = models.WordpressCategory
-            api_end = f"{self.url}/wp-json/wp/v2/categories?slug={thing_name}"
+            api_end = f"{self.url}/wp-json/wp/v2/categories?slug={object_name}"
 
-        if thing_name == "":
+        if object_name == "":
             raise PublishError(f"No {model} name specified")
 
         try:
-            entry = WpModel.objects.get(name__iexact=thing_name)
+            entry = WpModel.objects.get(name__iexact=object_name)
         except MultipleObjectsReturned as err:
-            raise PublishError(f"Multiple {model}s with {thing_name}")
+            raise PublishError(f"Multiple {model}s with {object_name}")
         except ObjectDoesNotExist:
             #Retrieve from API
             req_json = requests.get(f"{api_end}").json()
             try:
                 obj = req_json[0]
             except IndexError:
-                raise PublishError(f"No {model} named {thing_name}")
+                raise PublishError(f"No {model} named {object_name}")
 
             try:
-                existing = WpModel.objects.get(wp_id=obj["id"])
-                entry = existing
+                #Try one more time to see if object exists in database
+                existing_obj = WpModel.objects.get(wp_id=obj["id"])
+                entry = existing_obj
             except ObjectDoesNotExist:
                 if model == "author":
                     entry = WpModel(wp_id=obj["id"], name=obj["name"])
