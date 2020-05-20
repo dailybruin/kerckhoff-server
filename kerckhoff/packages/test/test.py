@@ -12,19 +12,20 @@ from ..models import *
 
 
 class WordpressIntegrationTest(APITestCase):
+
 	def setUp(self):
 		print("setting up")
 		self.user = UserFactory()
+		#  self.user.userprofile.auth_data = not too sure
 		self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user.auth_token}')
-		pset = PackageSet.objects.create(slug="test")
-		y = Package.objects.create(package_set=pset, slug="testpackage")
-		
+		pset = PackageSet.objects.create(slug="test", created_by=self.user)	
+		package = Package.objects.create(slug="wordpress.test_package", package_set=pset, created_by=self.user)	
 
 	def testfirst(self):
 		
 		print("here")
 		response = self.client.post("/api/v1/package-sets/test/packages/wordpress.test_package/preview/")
-		print(response)
+		print(response.json())
 		response = self.client.post("/api/v1/package-sets/test/packages/wordpress.test_package/snapshot/",{
 			"title":"test",
 			"version_description":"a",
