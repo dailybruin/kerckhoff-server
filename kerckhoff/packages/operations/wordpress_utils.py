@@ -8,6 +8,7 @@ import requests
 import logging
 import bleach
 from dominate.tags import *
+from bs4 import BeautifulSoup
 
 from django.utils.html import escape
 from django.core.exceptions import (
@@ -140,6 +141,7 @@ class WordpressIntegration:
         Converts AML data to HTML string using Dominate
         """
         #TODO: No support for related articles yet
+        #TODO: Author information at the bottom
         content_string = ""
         for item in content:
             try:
@@ -161,6 +163,20 @@ class WordpressIntegration:
                         headers=self.basic_auth_header,
                         data={"caption": caption}
                     )
+                elif item["type"] == "related_link":
+                    #Get headline from url
+                    url = bleach.clean(item["value"], strip=True, tags=[])
+                    res = requests.get(url)
+                    soup = BeautifulSoup(res.content, "html.parser")
+                    headline = soup.find("h1").get_text()
+                    #Generate html
+                    link = a(href=url)
+                    link.add(b(headline))
+                    paragraph = p()
+                    for item in [b("[Related link:"), link, b("]")]:
+                        paragraph.add(item)
+                    unescaped = str(unescape(paragraph)).replace("\n", "")  #Newlines mess up the html
+                    content_string += unescaped
                 else:
                     raise PublishError(f"Invalid content item type {item['type']}")
             except KeyError as err:
