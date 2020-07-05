@@ -27,7 +27,6 @@ class Common(Configuration):
         "taggit",
         "taggit_serializer",
         "drf_yasg",
-        "django_celery_results",
         # Your apps
         "kerckhoff.users",
         "kerckhoff.userprofiles",
@@ -82,13 +81,6 @@ class Common(Configuration):
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         }
     }
-
-    # Taskqueue Backend
-    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = "django-db"
-    CELERY_ACCEPT_CONTENT = ["application/json"]
-    CELERY_RESULT_SERIALIZER = "json"
-    CELERY_TASK_SERIALIZER = "json"
 
     # General
     APPEND_SLASH = False

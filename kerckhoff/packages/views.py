@@ -81,7 +81,6 @@ class PackageViewSet(
     """
     Updates and retrieves packages
     """
-
     def get_queryset(self):
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
 
