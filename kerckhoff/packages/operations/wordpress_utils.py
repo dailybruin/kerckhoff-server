@@ -32,7 +32,7 @@ Constructor Params schema:
     {
         (REQUIRED FIELDS)
         author: str
-        content: {...} (AML content)
+        content: [...] (AML content)
         coverimg: str (file name)
         excerpt: str
         headline: str
@@ -136,7 +136,7 @@ class WordpressIntegration:
         logger.info("Publish Response: ", response)
 
 
-    def get_html_string(self, content:dict) -> str:
+    def get_html_string(self, content:list) -> str:
         """
         Converts AML data to HTML string using Dominate
         """
