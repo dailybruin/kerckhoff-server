@@ -40,22 +40,6 @@ class BasicFunctionalityTest(APITestCase):
             'Authorization': "Basic " + b64encode(auth_data).decode("utf-8")
         }
 
-    def testfirst(self):
-        response = self.client.post("/api/v1/package-sets/test/packages/wordpress.test_package/preview/")
-        print(response.json())
-        response = self.client.post("/api/v1/package-sets/test/packages/wordpress.test_package/snapshot/",{
-            "title":"test",
-            "version_description":"a",
-            "included_items":[
-                "igor-stepanov-o32SNDk8cMA-unsplash.jpg",
-                "photo-1503023345310-bd7c1de61c7d.jpeg",
-                "the-honest-company--kCEUoJFH7I-unsplash.jpg",
-                "data.aml"
-            ]
-        })
-        print(response)
-        eq_(True, False);
-
     def test_missing_AML_fields(self):
         """
         Test that missing AML field throws appropriate PublishError
