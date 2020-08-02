@@ -301,3 +301,60 @@ categories = [
         "parent": 1431,
     }
 ]
+
+test_article_aml = {
+    "!": "Wordpress AML format",
+    "slug": "wp-post-test",
+    "headline": "A new standard",
+    "author": "Hee Jae Choi",
+    "coverimg": "vlad-tchompalov-dQkXoqQLn40-unsplash.jpg",
+    "covercaption": "This is the cover caption",
+    "categories": "a-closer-look, club-im-sports, swim-dive",
+    "excerpt": "This article will be a reference for the AML format for publishing to Wordpress from Kerckhoff",
+    "articleType": "article",
+    "content": [
+        {
+            "type": "text",
+            "value": "This article will be a reference for the AML format for publishing to Wordpress from Kerckhoff. Paragraphs will not have a tag in the content field. Any untagged text will be rendered as a paragraph. Images will have the following format:"
+        },
+        {
+            "type": "text",
+            "value": "Ut enim ad minim venia, quis’s nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis: aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+        },
+        {
+            "type": "image",
+            "value": {
+                "src": "glen-carrie-6-XmguXtoVE-unsplash.jpg",
+                "caption": "This is the caption"
+            }
+        },
+        {
+            "type": "aside",
+            "value": "Quotations will be put into asides. At the same time, embeds will have the following format, with only the tag and the corresponding url."
+        },
+        {
+            "type": "embed_instagram",
+            "value": "https://www.instagram.com/p/B8Pu_kKp11L/?utm_source=ig_web_copy_link"
+        },
+        {
+            "type": "embed_twitter",
+            "value": "https://twitter.com/Interior/status/463440424141459456"
+        },
+        {
+            "type": "related_link",
+            "value": "https://dailybruin.com/2020/02/09/uc-patient-care-and-service-workers-ratify-wage-increases-more-in-new-contract"
+        },
+        {
+            "type": "text",
+            "value": "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Last paragraph."
+        }
+    ]
+}
+
+# Images for above AML article
+# Note: these are the actual photos that the article references
+test_article_images = {
+    "glen-carrie-6-XmguXtoVE-unsplash.jpg": "https://images.unsplash.com/photo-1414322058660-a4c56ab6c1e2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1050&q=80",
+    "vlad-tchompalov-dQkXoqQLn40-unsplash.jpg": "https://images.unsplash.com/photo-1510940753358-0c6d35aa3981?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80"
+
+}

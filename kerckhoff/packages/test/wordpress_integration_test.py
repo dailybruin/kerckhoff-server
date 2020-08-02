@@ -17,20 +17,18 @@ import re
 from ..operations.wordpress_utils import WordpressIntegration
 from ..exceptions import PublishError
 from ..models import *
-from .wordpress_test_data import authors, categories
+from .wordpress_test_data import (
+    authors,
+    categories,
+    test_article_aml,
+    test_article_images
+)
 from .factories import UserFactory
 
 
 class BasicFunctionalityTest(APITestCase):
 
     def setUp(self):
-        print("setting up")
-        self.user = UserFactory()
-        #  self.user.userprofile.auth_data = not too sure
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user.auth_token}')
-        pset = PackageSet.objects.create(slug="test", created_by=self.user)
-        package = Package.objects.create(slug="wordpress.test_package", package_set=pset, created_by=self.user)
-
         # Wordpress Basic Auth: Auth data is stored in /.env
         user = getenv("WORDPRESS_API_USER")
         pw = getenv("WORDPRESS_API_PW")
@@ -157,8 +155,8 @@ class BasicFunctionalityTest(APITestCase):
         def upload_and_delete_image(image_url):
             integration = WordpressIntegration({}, [])
             image_data = integration.upload_img_from_s3(image_url, "test.jpg")
-            api_url = getenv("WORDPRESS_API_URL")
             # Delete immediately
+            api_url = getenv("WORDPRESS_API_URL")
             res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{image_data["id"]}?force=true',
                                   headers=self.basic_auth_header)
 
@@ -183,8 +181,25 @@ class BasicFunctionalityTest(APITestCase):
 
 
     def test_article_posting(self):
-        return
+        """
+        Test posting of article to Wordpress
+        """
+        integration = WordpressIntegration(test_article_aml, test_article_images)
+        try:
+            result = integration.publish()
+        except PublishError as e:
+            self.fail(e.detail)
 
+        # Delete post
+        api_url = getenv("WORDPRESS_API_URL")
+        res = requests.delete(f'{api_url}/wp-json/wp/v2/posts/{result["id"]}?force=true',
+                                  headers=self.basic_auth_header)
+
+        # Delete images
+        img_data = result["img_data"]
+        for img in img_data:
+            res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
+                                  headers=self.basic_auth_header)
 
 class ErrThread(Thread):
     """
