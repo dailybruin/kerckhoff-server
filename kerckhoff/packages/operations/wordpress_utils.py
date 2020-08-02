@@ -64,11 +64,19 @@ class WordpressIntegration:
         }
 
 
-    def publish(self):
+    def publish(self) -> dict:
         """
         Publishes article data to WordPress using REST API
             - Sends article data as a HTML string
             - Authentication using WordPress Application Passwords
+
+        Return format:
+        {
+            id: id of post
+            img_data : {...self.img_data}
+        }
+        The return data is currently only being used to delete
+        the post in tests
         """
 
         print("Parsing top level data...")
@@ -134,6 +142,11 @@ class WordpressIntegration:
             print(response)
             raise PublishError("Failed to send data to WordPress")
         logger.info("Publish Response: ", response)
+
+        return {
+            "id": response.json()["id"],
+            "img_data": self.img_data
+        }
 
 
     def get_html_string(self, content:list) -> str:
