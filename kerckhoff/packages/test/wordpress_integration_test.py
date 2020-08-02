@@ -7,20 +7,18 @@ from nose.tools import ok_, eq_
 from rest_framework.test import APITestCase
 from rest_framework import status
 from faker import Faker
-from .factories import UserFactory
-from ..models import *
+from bs4 import BeautifulSoup
+import requests
 
+from os import getenv
 from threading import Thread
 import re
 
-from bs4 import BeautifulSoup
-
-from kerckhoff.packages.operations.wordpress_utils import WordpressIntegration
-from kerckhoff.packages.exceptions import PublishError
-from kerckhoff.packages.test.wordpress_test_data import (
-    authors,
-    categories
-)
+from ..operations.wordpress_utils import WordpressIntegration
+from ..exceptions import PublishError
+from ..models import *
+from .wordpress_test_data import authors, categories
+from .factories import UserFactory
 
 
 class BasicFunctionalityTest(APITestCase):
@@ -32,6 +30,17 @@ class BasicFunctionalityTest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user.auth_token}')
         pset = PackageSet.objects.create(slug="test", created_by=self.user)
         package = Package.objects.create(slug="wordpress.test_package", package_set=pset, created_by=self.user)
+
+        # Wordpress Basic Auth: Auth data is stored in /.env
+        user = getenv("WORDPRESS_API_USER")
+        pw = getenv("WORDPRESS_API_PW")
+        auth_string = f"{user}:{pw}"
+        auth_data = auth_string.encode("utf-8")
+        self.url = getenv("WORDPRESS_API_URL")
+        self.basic_auth_header = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': "Basic " + b64encode(auth_data).decode("utf-8")
+        }
 
     def testfirst(self):
         response = self.client.post("/api/v1/package-sets/test/packages/wordpress.test_package/preview/")
@@ -115,10 +124,7 @@ class BasicFunctionalityTest(APITestCase):
 
     def test_wp_category_ids(self):
         """
-        Test that WordpressIntegration retrieves category id from API + database correctly
-
-        Multithreading is used to speed up the process, as a request and database query
-        is done for every category
+        Same as test_wp_author_ids, but for categories instead
         """
         def compare_category_ids(category:dict):
             integration = WordpressIntegration({}, [])
@@ -142,10 +148,60 @@ class BasicFunctionalityTest(APITestCase):
                     raise t.err
 
     def test_image_uploading(self):
-        return
+        """
+        Test uploading of image from S3 to Wordpress using Wordpress REST API
+
+        For testing purposes, we don't necessarily need to use S3 links
+        """
+
+        def upload_and_delete_image(image_url):
+            integration = WordpressIntegration({}, [])
+            image_data = integration.upload_img_from_s3(image_url, "test.jpg")
+            api_url = getenv("WORDPRESS_API_URL")
+            # Delete immediately
+            res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{image_data["id"]}?force=true',
+                                  headers=self.basic_auth_header)
+
+        # Change these image urls if any of them go down
+        image_urls = [
+            "https://images.unsplash.com/photo-1596273249616-2b7ff039de07?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=633&q=80",
+            "https://images.unsplash.com/photo-1596178836784-268ac447e3e2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1302&q=80",
+            "https://images.unsplash.com/photo-1596162954151-cdcb4c0f70a8?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
+        ]
+
+        threads = []
+        for url in image_urls:
+            t = ErrThread(target=upload_and_delete_image, args=(url,))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+            # t.err will be a PublishError
+            if t.err:
+                self.fail(t.err)
+
 
     def test_article_posting(self):
         return
+
+
+class ErrThread(Thread):
+    """
+    Special thread that allows assertions to be used in a multithreading context
+
+    Instead of allowing AssertionErrors to be raised while in individual threads,
+    it saves them so that they can be raised later in the main thread. Without this,
+    the test case will always pass, as the testing module will never see the AssertionErrors.
+    """
+    def run(self):
+        try:
+            Thread.run(self)
+        except Exception as e:
+            self.err = e
+            pass
+        else:
+            self.err = None
 
 
 class HTMLCorrectnessTest(APITestCase):
@@ -290,20 +346,3 @@ class HTMLCorrectnessTest(APITestCase):
         self.assertEqual(anchor["href"], url) #Link
         self.assertEqual(anchor.find("b").string, headline) #Headline
 
-
-class ErrThread(Thread):
-    """
-    Special thread that allows assertions to be used in a multithreading context
-
-    Instead of allowing AssertionErrors to be raised while in individual threads,
-    it saves them so that they can be raised later in the main thread. Without this,
-    the test case will always pass, as the testing module will never see the AssertionErrors.
-    """
-    def run(self):
-        try:
-            Thread.run(self)
-        except Exception as e:
-            self.err = e
-            pass
-        else:
-            self.err = None
