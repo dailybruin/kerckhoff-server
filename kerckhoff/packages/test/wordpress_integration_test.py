@@ -1,18 +1,10 @@
-from django.test import TestCase
-from django.test import Client
-from django.urls import reverse
-from django.forms.models import model_to_dict
-from django.contrib.auth.hashers import check_password
-from nose.tools import ok_, eq_
-from rest_framework.test import APITestCase
-from rest_framework import status
-from faker import Faker
-from bs4 import BeautifulSoup
-import requests
-
 from os import getenv
 from threading import Thread
 import re
+
+from django.test import TestCase
+from bs4 import BeautifulSoup
+import requests
 
 from ..operations.wordpress_utils import WordpressIntegration
 from ..exceptions import PublishError
@@ -23,10 +15,9 @@ from .wordpress_test_data import (
     test_article_aml,
     test_article_images
 )
-from .factories import UserFactory
 
 
-class BasicFunctionalityTest(APITestCase):
+class BasicFunctionalityTest(TestCase):
 
     def setUp(self):
         # Wordpress Basic Auth: Auth data is stored in /.env
@@ -168,6 +159,9 @@ class BasicFunctionalityTest(APITestCase):
         """
         Test posting of article to Wordpress
         """
+
+        #TODO: additional checks for article format after upload using BS4
+
         integration = WordpressIntegration(test_article_aml, test_article_images)
         try:
             result = integration.publish()
@@ -203,7 +197,7 @@ class ErrThread(Thread):
             self.err = None
 
 
-class HTMLCorrectnessTest(APITestCase):
+class HTMLCorrectnessTest(TestCase):
     integration = WordpressIntegration({}, [])
 
     def test_paragraph(self):
