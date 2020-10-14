@@ -193,7 +193,7 @@ class WordpressIntegration:
                 else:
                     raise PublishError(f"Invalid content item type {item['type']}")
             except KeyError as err:
-                raise PublishError(f"Invalid AML item: {err}")
+                raise PublishError(f"Invalid AML item {item}")
         return content_string
 
 
