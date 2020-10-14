@@ -19,6 +19,8 @@ from .wordpress_test_data import (
 
 class BasicFunctionalityTest(TestCase):
 
+    #TODO: test uncategorized
+
     def setUp(self):
         # Wordpress Basic Auth: Auth data is stored in /.env
         user = getenv("WORDPRESS_API_USER")
@@ -179,6 +181,9 @@ class BasicFunctionalityTest(TestCase):
             res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
                                   headers=self.basic_auth_header)
 
+    def test_uncategorized_article(self):
+        pass
+
 class ErrThread(Thread):
     """
     Special thread that allows assertions to be used in a multithreading context
@@ -198,7 +203,31 @@ class ErrThread(Thread):
 
 
 class HTMLCorrectnessTest(TestCase):
-    integration = WordpressIntegration({}, [])
+
+    def setUp(self):
+        self.integration = WordpressIntegration({}, [])
+
+    def test_invalid_content_type(self):
+        content = [
+            {
+                "type": "random_type_name",
+                "value": "first paragraph"
+            }
+        ]
+        with self.assertRaises(PublishError) as context:
+            html = self.integration.get_html_string(content)
+        self.assertTrue(f"Invalid content item type {content[0]['type']}" == str(context.exception))
+
+    def test_item_missing_attributes(self):
+        content = [
+            {
+                "typ": "random_type_name",
+                "value": "first paragraph"
+            }
+        ]
+        with self.assertRaises(PublishError) as context:
+            html = self.integration.get_html_string(content)
+        self.assertTrue(f"Invalid AML item {content[0]}" == str(context.exception))
 
     def test_paragraph(self):
         content = [
