@@ -351,6 +351,24 @@ test_article_aml = {
     ]
 }
 
+uncategorized_aml = {
+    "slug": "uncategorized-test",
+    "headline": "Uncategorized Test",
+    "author": "Hee Jae Choi",
+    "coverimg": "",
+    "covercaption": "",
+    "categories": "uncategorized",
+    "excerpt": "",
+    "articleType": "article",
+    "content": [
+        {
+            "type": "text",
+            "value": "dummy text"
+        }
+    ]
+
+}
+
 # Images for above AML article
 # Note: these are the actual photos that the article references
 test_article_images = {

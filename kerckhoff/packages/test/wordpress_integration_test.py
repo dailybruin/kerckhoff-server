@@ -9,13 +9,7 @@ import requests
 from ..operations.wordpress_utils import WordpressIntegration
 from ..exceptions import PublishError
 from ..models import *
-from .wordpress_test_data import (
-    authors,
-    categories,
-    test_article_aml,
-    test_article_images
-)
-
+from .wordpress_test_data import *
 
 class BasicFunctionalityTest(TestCase):
 
@@ -45,22 +39,18 @@ class BasicFunctionalityTest(TestCase):
                     "type": "text"
                 }
             ],
-            "coverimg": "test.jpg",
             "excerpt": "this is a test AML",
             "headline": "Test AML",
             "slug": "slug1",
-            "covercaption": "this is the caption",
             "categories": "cat1,cat2,cat3"
         }
         for field in data.keys():
             data_copy = data.copy()
             data_copy.pop(field)
-            try:
+            with self.assertRaises(PublishError) as context:
                 integration = WordpressIntegration(data_copy, [])
                 integration.publish()
-            except PublishError as e:
-                self.assertEqual(e.detail, f"Missing top-level AML field: \'{field}\'")
-
+                self.assertEqual(context.exception.detail, f"Missing top-level AML field: \'{field}\'")
 
     def test_wp_author_ids(self):
         """
@@ -156,7 +146,6 @@ class BasicFunctionalityTest(TestCase):
             if t.err:
                 self.fail(t.err)
 
-
     def test_article_posting(self):
         """
         Test posting of article to Wordpress
@@ -182,7 +171,18 @@ class BasicFunctionalityTest(TestCase):
                                   headers=self.basic_auth_header)
 
     def test_uncategorized_article(self):
-        pass
+        """
+        Test that uncategorized category applies properly
+        """
+        integration = WordpressIntegration(uncategorized_aml, [])
+        api_url = getenv("WORDPRESS_API_URL")
+        try:
+            result = integration.publish()
+            self.assertTrue(1 in result["response"]["categories"]) # 1 is the uncategorized id
+        except PublishError as e:
+            self.fail(e.detail)
+
+
 
 class ErrThread(Thread):
     """
