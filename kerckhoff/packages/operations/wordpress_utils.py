@@ -180,11 +180,14 @@ class WordpressIntegration:
                     caption = item["value"]["caption"]
                     html = self.img_data[file_name]["html"]
                     html_content.append(f"[caption align=\"aligncenter\" width=\"207\"]{html}{caption}[/caption]")
-                    requests.post(  #Wordpress caption uploading
-                        f"{self.url}/wp-json/wp/v2/media/{self.img_data[file_name]['id']}",
-                        headers=self.basic_auth_header,
-                        data={"caption": caption}
-                    )
+                    try:
+                        requests.post(  #Wordpress caption uploading
+                                f"{self.url}/wp-json/wp/v2/media/{self.img_data[file_name]['id']}",
+                            headers=self.basic_auth_header,
+                            data={"caption": caption}
+                        )
+                    except KeyError as err:
+                        raise PublishError(f"Missing image file: {err}")
                 elif item["type"] == "related_link":
                     #Get headline from url
                     url = bleach.clean(item["value"], strip=True, tags=[])
