@@ -164,22 +164,22 @@ class WordpressIntegration:
         """
         #TODO: No support for related articles yet
         #TODO: Author information at the bottom
-        content_string = ""
+        html_content = []
         for item in content:
             try:
                 if item["type"] == "text":
-                    content_string += str(p(unescape(item["value"])))
+                    html_content.append(str(p(unescape(item["value"]))))
                 elif item["type"] == "aside":
-                    content_string += str(aside(unescape(item["value"])))
+                    html_content.append(str(aside(unescape(item["value"]))))
                 elif item["type"] == "embed_instagram" or item["type"] == "embed_twitter":
                     #Strip all tags and escape to get the embed link
                     text = bleach.clean(item["value"], strip=True, tags=[])
-                    content_string += "\n" + escape(text) + "\n"
+                    html_content.append("\n" + escape(text) + "\n")
                 elif item["type"] == "image":
                     file_name = item["value"]["src"]
                     caption = item["value"]["caption"]
                     html = self.img_data[file_name]["html"]
-                    content_string += f"[caption align=\"aligncenter\" width=\"207\"]{html}{caption}[/caption]"
+                    html_content.append(f"[caption align=\"aligncenter\" width=\"207\"]{html}{caption}[/caption]")
                     requests.post(  #Wordpress caption uploading
                         f"{self.url}/wp-json/wp/v2/media/{self.img_data[file_name]['id']}",
                         headers=self.basic_auth_header,
@@ -198,12 +198,12 @@ class WordpressIntegration:
                     for item in [b("[Related link:"), link, b("]")]:
                         paragraph.add(item)
                     unescaped = str(unescape(paragraph)).replace("\n", "")  #Newlines mess up the html
-                    content_string += unescaped
+                    html_content.append(unescaped)
                 else:
                     raise PublishError(f"Invalid content item type {item['type']}")
             except KeyError as err:
                 raise PublishError(f"Invalid AML item {item}")
-        return content_string
+        return "".join(html_content)
 
 
     def get_author_id(self, author_name) -> int:
