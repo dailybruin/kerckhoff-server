@@ -70,16 +70,18 @@ class WordpressIntegration:
             - Sends article data as a HTML string
             - Authentication using WordPress Application Passwords
 
-        Return format:
+        Return format (mostly for testing):
         {
             id: id of post
             img_data : {...self.img_data}
+            response: WordPress API response
         }
         The return data is currently only being used to delete
         the post in tests
         """
 
-        print("Parsing top level data...")
+        logger.info("Began publishing to WordPress...")
+
         #AML metadata (top level tags)
         try:
             author = self.aml_data["author"]
@@ -91,7 +93,6 @@ class WordpressIntegration:
         except KeyError as err:
             raise PublishError(f"Missing top-level AML field: {err}")
 
-        print("Retrieving IDs...")
         #Convert metadata to Wordpress UUIDs
         author_id = self.get_author_id(author)
         category_id_string = ""
@@ -101,7 +102,6 @@ class WordpressIntegration:
             if i < len(categories) - 1:
                 category_id_string += ","
 
-        print("Uploading images...")
         #Upload imgs to Wordpress + retrieve Wordpress metadata
         self.img_data = {}
         for img in self.img_urls:
@@ -131,7 +131,6 @@ class WordpressIntegration:
             "categories": category_id_string,
         }
 
-        print("Publishing...")
         #REST API post
         #TODO: Improve this error handling (feedback to frontend)
         if coverimg_id != "":
@@ -148,13 +147,15 @@ class WordpressIntegration:
             data=data
         )
         if not response.ok:
-            print(response)
+            logger.warning("Failed to publish to WordPress. Response: ", response.json())
             raise PublishError("Failed to send data to WordPress")
-        logger.info("Publish Response: ", response)
+        else:
+            logger.info("Successfully published to WordPress")
 
         return {
             "id": response.json()["id"],
-            "img_data": self.img_data
+            "img_data": self.img_data,
+            "response": response.json()
         }
 
 
@@ -241,8 +242,7 @@ class WordpressIntegration:
                 wp_res = requests.post(f"{self.url}/wp-json/wp/v2/media", headers=headers, data=data)
                 if wp_res.ok:
                     res_json = wp_res.json()
-                    logger.info(f"Uploaded image to wordpress with result {wp_res}")
-                    print(f"{file_name} uploaded")
+                    logger.info(f"Successfully uploaded image {file_name} to WordPress")
                     return {
                         "id": res_json["id"],
                         "html": res_json["description"]["rendered"],
@@ -250,8 +250,7 @@ class WordpressIntegration:
                     }
                 else:
                     err_message = f"Unable to upload image {file_name} to WordPress"
-                    logger.info(err_message)
-                    logger.info(f"{wp_res}")
+                    logger.warning(f"{err_message}. Response: ", wp_res.json())
                     raise PublishError(err_message)
                 f.flush()
         else:
@@ -282,7 +281,7 @@ class WordpressIntegration:
             raise PublishError(f"Multiple {model}s with {object_name}")
         except ObjectDoesNotExist:
             #Retrieve from API
-            req_json = requests.get(f"{api_end}").json()
+            req_json = requests.get(api_end).json()
             try:
                 obj = req_json[0]
             except IndexError:

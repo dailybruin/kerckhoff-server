@@ -265,8 +265,6 @@ class Package(models.Model):
         aml_data = json_data["content_rich"]["data"]
         aml_data["slug"] = self.slug
 
-        print(img_urls)
-
         wp = WordpressIntegration(aml_data, img_urls)
         wp.publish()
 

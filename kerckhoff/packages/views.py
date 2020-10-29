@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
@@ -19,6 +21,8 @@ from .serializers import (
 
 
 slug_with_dots = "[-a-zA-Z0-9_.&]+"
+
+logger = logging.getLogger(__name__)
 
 
 class PackageSetViewSet(
@@ -103,7 +107,7 @@ class PackageViewSet(
             package.publish()
             return Response(status=200)
         except Exception as err:
-            print("Exception returned by Wordpress Utils:", err)
+            logger.warning(f"Exception raised during WordPress publishing: \"{err}\"")
             return Response(status=400, data=err.detail)
 
     @action(
