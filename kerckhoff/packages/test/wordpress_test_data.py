@@ -306,16 +306,16 @@ test_article_aml = {
     "!": "Wordpress AML format",
     "slug": "wp-post-test",
     "headline": "A new standard",
-    "author": "Hee Jae Choi",
+    "author": "Anonymous Submission",
     "coverimg": "vlad-tchompalov-dQkXoqQLn40-unsplash.jpg",
     "covercaption": "This is the cover caption",
-    "categories": "a-closer-look, club-im-sports, swim-dive",
+    "categories": "uncategorized, a-closer-look, club-im-sports, swim-dive",
     "excerpt": "This article will be a reference for the AML format for publishing to Wordpress from Kerckhoff",
     "articleType": "article",
     "content": [
         {
             "type": "text",
-            "value": "This article will be a reference for the AML format for publishing to Wordpress from Kerckhoff. Paragraphs will not have a tag in the content field. Any untagged text will be rendered as a paragraph. Images will have the following format:"
+            "value": "This article will be a reference for the AML format for publishing to WordPress from Kerckhoff. Paragraphs will not have a tag in the content field. Any untagged text will be rendered as a paragraph. Images will have the following format:"
         },
         {
             "type": "text",
@@ -349,24 +349,6 @@ test_article_aml = {
             "value": "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Last paragraph."
         }
     ]
-}
-
-uncategorized_aml = {
-    "slug": "uncategorized-test",
-    "headline": "Uncategorized Test",
-    "author": "Hee Jae Choi",
-    "coverimg": "",
-    "covercaption": "",
-    "categories": "uncategorized",
-    "excerpt": "",
-    "articleType": "article",
-    "content": [
-        {
-            "type": "text",
-            "value": "dummy text"
-        }
-    ]
-
 }
 
 # Images for above AML article

@@ -9,7 +9,14 @@ import requests
 from ..operations.wordpress_utils import WordpressIntegration
 from ..exceptions import PublishError
 from ..models import *
-from .wordpress_test_data import *
+from .wordpress_test_data import (
+    authors,
+    categories,
+    test_article_aml,
+    test_article_images
+)
+
+# pp = pprint.PrettyPrinter(indent=2) #for debugging
 
 class BasicFunctionalityTest(TestCase):
 
@@ -154,34 +161,40 @@ class BasicFunctionalityTest(TestCase):
         #TODO: additional checks for article format after upload using BS4
 
         integration = WordpressIntegration(test_article_aml, test_article_images)
+
         try:
+            # Publish Test Article
             result = integration.publish()
-        except PublishError as e:
-            self.fail(e.detail)
+            url = result["response"]["link"]
 
-        # Delete post
-        api_url = getenv("WORDPRESS_API_URL")
-        res = requests.delete(f'{api_url}/wp-json/wp/v2/posts/{result["id"]}?force=true',
-                                  headers=self.basic_auth_header)
-
-        # Delete images
-        img_data = result["img_data"]
-        for img in img_data:
-            res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
-                                  headers=self.basic_auth_header)
-
-    def test_uncategorized_article(self):
-        """
-        Test that uncategorized category applies properly
-        """
-        integration = WordpressIntegration(uncategorized_aml, [])
-        api_url = getenv("WORDPRESS_API_URL")
-        try:
-            result = integration.publish()
+            # Uncategorized category id test (important)
             self.assertTrue(1 in result["response"]["categories"]) # 1 is the uncategorized id
+
+            # Check published article in correct format
+            self.check_article_html(url, test_article_aml)
         except PublishError as e:
             self.fail(e.detail)
+        finally:
+            # Delete post
+            api_url = getenv("WORDPRESS_API_URL")
+            res = requests.delete(f'{api_url}/wp-json/wp/v2/posts/{result["id"]}?force=true',
+                                      headers=self.basic_auth_header)
+            # Delete images
+            img_data = result["img_data"]
+            for img in img_data:
+                res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
+                                      headers=self.basic_auth_header)
 
+    def check_article_html(self, url, article_aml):
+        """
+        Helper function to check HTML of published article against its AML
+        """
+        soup = BeautifulSoup(requests.get(url).content, "html.parser")
+        paragraphs = map(lambda el: el.get_text(strip=True), soup.find_all("p"))
+        content = article_aml["content"]
+        for item in content:
+            if item["type"] == "text":
+                self.assertTrue(item["value"].strip() in paragraphs)
 
 
 class ErrThread(Thread):
