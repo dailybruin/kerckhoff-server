@@ -147,7 +147,7 @@ class WordpressIntegration:
             data=data
         )
         if not response.ok:
-            logger.warning("Failed to publish to WordPress. Response: ", response.json())
+            logger.warning(f"Failed to publish to WordPress. Response: {response.json()}")
             raise PublishError("Failed to send data to WordPress")
         else:
             logger.info("Successfully published to WordPress")
@@ -163,8 +163,6 @@ class WordpressIntegration:
         """
         Converts AML data to HTML string using Dominate
         """
-        #TODO: No support for related articles yet
-        #TODO: Author information at the bottom
         html_content = []
         for item in content:
             try:
@@ -250,7 +248,7 @@ class WordpressIntegration:
                     }
                 else:
                     err_message = f"Unable to upload image {file_name} to WordPress"
-                    logger.warning(f"{err_message}. Response: ", wp_res.json())
+                    logger.warning(f"{err_message}. Response: {wp_res.json()}")
                     raise PublishError(err_message)
                 f.flush()
         else:
@@ -277,7 +275,7 @@ class WordpressIntegration:
 
         try:
             entry = WpModel.objects.get(name__iexact=object_name)
-        except MultipleObjectsReturned as err:
+        except MultipleObjectsReturned:
             raise PublishError(f"Multiple {model}s with {object_name}")
         except ObjectDoesNotExist:
             #Retrieve from API
