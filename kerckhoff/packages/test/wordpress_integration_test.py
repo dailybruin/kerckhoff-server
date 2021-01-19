@@ -1,6 +1,7 @@
 from os import getenv
 from threading import Thread
 import re
+from urllib.parse import urlsplit
 
 from django.test import TestCase
 from bs4 import BeautifulSoup
@@ -80,7 +81,7 @@ class BasicFunctionalityTest(TestCase):
                     print(f'Wrong id for author {author["name"]}')
                 self.assertEqual(wp_id, author["id"])
 
-        for i in range(2):
+        for _ in range(2):
             # Run twice: once for retrieval from API, once for retrieval from db
             threads = []
             for author in authors:
@@ -105,7 +106,7 @@ class BasicFunctionalityTest(TestCase):
                 print(f'Wrong id for category {category["name"]}')
             self.assertEqual(wp_id, category["id"])
 
-        for i in range(2):
+        for _ in range(2):
             # Run twice: once for retrieval from API, once for retrieval from db
             threads = []
             for category in categories:
@@ -127,12 +128,16 @@ class BasicFunctionalityTest(TestCase):
         """
 
         def upload_and_delete_image(image_url):
-            integration = WordpressIntegration({}, [])
-            image_data = integration.upload_img_from_s3(image_url, "test.jpg")
-            # Delete immediately
-            api_url = getenv("WORDPRESS_API_URL")
-            res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{image_data["id"]}?force=true',
-                                  headers=self.basic_auth_header)
+            try:
+                integration = WordpressIntegration({}, [])
+                image_data = integration.upload_img_from_s3(image_url, "test.jpg")
+            except PublishError as e:
+                self.fail(e.detail)
+            finally:
+                # Delete immediately
+                api_url = getenv("WORDPRESS_API_URL")
+                requests.delete(f'{api_url}/wp-json/wp/v2/media/{image_data["id"]}?force=true',
+                                      headers=self.basic_auth_header)
 
         # Change these image urls if any of them go down
         image_urls = [
@@ -177,24 +182,59 @@ class BasicFunctionalityTest(TestCase):
         finally:
             # Delete post
             api_url = getenv("WORDPRESS_API_URL")
-            res = requests.delete(f'{api_url}/wp-json/wp/v2/posts/{result["id"]}?force=true',
+            requests.delete(f'{api_url}/wp-json/wp/v2/posts/{result["id"]}?force=true',
                                       headers=self.basic_auth_header)
             # Delete images
             img_data = result["img_data"]
             for img in img_data:
-                res = requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
+                requests.delete(f'{api_url}/wp-json/wp/v2/media/{img_data[img]["id"]}?force=true',
                                       headers=self.basic_auth_header)
 
     def check_article_html(self, url, article_aml):
         """
         Helper function to check HTML of published article against its AML
         """
+        # Parse uploaded content
         soup = BeautifulSoup(requests.get(url).content, "html.parser")
-        paragraphs = map(lambda el: el.get_text(strip=True), soup.find_all("p"))
+        paragraphs = set(map(lambda e : e.get_text(strip=True), soup.find_all("p")))
+        asides = set(map(lambda e : e.get_text(strip=True), soup.find_all("aside")))
+        related_headlines = set(map(lambda e : e.get_text(strip=True), soup.find_all("b")))
+        # Exclude query string from urls
+        anchor_urls = set(map(lambda e : e["href"].split("?")[0], soup.find_all("a")))
+        instagram_post_urls = set(map(lambda e: e["data-instgrm-permalink"].split("?")[0],
+                                  soup.find_all("blockquote", class_="instagram-media")))
+        num_images = 1 # One image will be the cover
+
+        # Check article against AML
         content = article_aml["content"]
         for item in content:
             if item["type"] == "text":
-                self.assertTrue(item["value"].strip() in paragraphs)
+                self.assertTrue(item["value"].strip() in paragraphs,
+                                f"Paragraph \"{item['value']}\" not in article")
+            elif item["type"] == "aside":
+                self.assertTrue(item["value"].strip() in asides,
+                                f"Aside \"{item['value']}\" not in article")
+            elif item["type"] == "image":
+                # Note: Can't test image file names right now because
+                # WordPress might rename them
+                self.assertTrue(item["value"]["caption"].strip() in paragraphs,
+                                f"Caption \"{item['value']['caption']}\" not in article")
+                num_images += 1
+            elif item["type"] == "related_link":
+                related_article = requests.get(item["value"]).content
+                headline = BeautifulSoup(related_article, "html.parser").find("h1").get_text()
+                self.assertTrue(headline in related_headlines,
+                                f"Related article \"{item['value']}\" not in article")
+                self.assertTrue(item["value"].strip() in anchor_urls,
+                                f"Related article \"{item['value']}\" not in article")
+            elif item["type"] == "embed_instagram":
+                self.assertTrue(item["value"].split("?")[0] in instagram_post_urls)
+            elif item["type"] == "embed_twitter":
+                self.assertTrue(item["value"].strip() in anchor_urls)
+
+        self.assertEqual(num_images, len(soup.find_all("img")),
+                         "Wrong number of images in article")
+
 
 
 class ErrThread(Thread):
@@ -228,7 +268,7 @@ class HTMLCorrectnessTest(TestCase):
             }
         ]
         with self.assertRaises(PublishError) as context:
-            html = self.integration.get_html_string(content)
+            self.integration.get_html_string(content)
         self.assertTrue(f"Invalid content item type {content[0]['type']}" == str(context.exception))
 
     def test_item_missing_attributes(self):
@@ -239,7 +279,7 @@ class HTMLCorrectnessTest(TestCase):
             }
         ]
         with self.assertRaises(PublishError) as context:
-            html = self.integration.get_html_string(content)
+            self.integration.get_html_string(content)
         self.assertTrue(f"Invalid AML item {content[0]}" == str(context.exception))
 
     def test_paragraph(self):

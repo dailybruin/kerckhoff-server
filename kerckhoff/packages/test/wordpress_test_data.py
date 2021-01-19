@@ -315,7 +315,7 @@ test_article_aml = {
     "content": [
         {
             "type": "text",
-            "value": "This article will be a reference for the AML format for publishing to WordPress from Kerckhoff. Paragraphs will not have a tag in the content field. Any untagged text will be rendered as a paragraph. Images will have the following format:"
+            "value": "This article will be a reference for the AML format for publishing to the Daily Bruin main site from Kerckhoff. Paragraphs will not have a tag in the content field. Any untagged text will be rendered as a paragraph. Images will have the following format:"
         },
         {
             "type": "text",
