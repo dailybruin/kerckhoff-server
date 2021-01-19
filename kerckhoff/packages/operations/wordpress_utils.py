@@ -85,6 +85,8 @@ class WordpressIntegration:
         #AML metadata (top level tags)
         try:
             author = self.aml_data["author"]
+            coverimg = self.aml_data["coverimg"]
+            covercaption = self.aml_data["covercaption"]
             headline = self.aml_data["headline"]
             slug = self.aml_data["slug"]
             excerpt = self.aml_data["excerpt"]
@@ -107,17 +109,9 @@ class WordpressIntegration:
         for img in self.img_urls:
             self.img_data[img] = self.upload_img_from_s3(self.img_urls[img], img)
 
-        # Set coverimg if in article
-        if "coverimg" in self.aml_data and self.aml_data["coverimg"] != "":
-            try:
-                coverimg_id = str(self.img_data[self.aml_data["coverimg"]]["id"])
-                covercaption = self.aml_data["covercaption"]
-            except KeyError as err:
-                raise PublishError(f"Missing cover image file: {err}")
-        else:
-            coverimg_id = ""
-
         #Content generation
+        #TODO: No support for related articles yet
+        #TODO: Support for categories and tags
         content_string = self.get_html_string(content)
 
         data = {
@@ -127,20 +121,17 @@ class WordpressIntegration:
             "content": content_string,
             "author": str(author_id),
             "excerpt": excerpt,
-            "featured_media": coverimg_id if coverimg_id != "" else None,
+            "featured_media": str(self.img_data[coverimg]["id"]),
             "categories": category_id_string,
         }
 
         #REST API post
         #TODO: Improve this error handling (feedback to frontend)
-        if coverimg_id != "":
-            # Wordpress caption uploading:
-            requests.post(
-                f"{self.url}/wp-json/wp/v2/media/{coverimg_id}",
-                headers=self.basic_auth_header,
-                data={"caption": covercaption}
-            )
-
+        requests.post(  #Wordpress caption uploading
+            f"{self.url}/wp-json/wp/v2/media/{self.img_data[coverimg]['id']}",
+            headers=self.basic_auth_header,
+            data={"caption": covercaption}
+        )
         response = requests.post(  #Main article uploading
             f"{self.url}/wp-json/wp/v2/posts",
             headers=self.basic_auth_header,
