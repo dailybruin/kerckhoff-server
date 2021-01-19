@@ -25,6 +25,9 @@ services:
       WORDPRESS_DB_NAME: wordpress
   postgres:
     image: postgres:9.6
+    environment:
+      POSTGRES_DB: "db"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
   web:
     restart: always
     env_file:
