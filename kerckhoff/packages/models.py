@@ -19,9 +19,16 @@ from kerckhoff.packages.operations.models import (
     GoogleDriveTextFile,
     FORMAT_MD,
 )
+from kerckhoff.packages.operations.wordpress_utils import WordpressIntegration
+import pprint
 from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
+
+from base64 import b64encode
+from os import getenv
+import requests
+import tempfile
 
 User: AppUser = get_user_model()
 
@@ -240,13 +247,41 @@ class Package(models.Model):
             return package_version
 
     def publish(self):
-        # TODO: this is only for demo purposes, the actual publish needs to be significantly more customizable
-        integrations = self.package_set.integration_set.all()
-        for integration in integrations:
-            if integration.auth_data.active:
-                integration.publish(self.latest_version)
-        self.state = self.PUBLISHED
-        self.save()
+        """
+        Publishes article data to WordPress using REST API
+            - Sends article data as a HTML string
+            - Authentication using WordPress Application Passwords
+        """
+
+        #Extracting files from package version
+        packages_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
+        img_urls = {}
+        for file in packages_latest_version:
+            if(file.file_name == "data.aml"):
+                json_data = file.data
+            if("jpg" in file.file_name or "jpeg" in file.file_name
+               or "png" in file.file_name):
+                img_urls[file.file_name] = file.data["src_large"]
+        aml_data = json_data["content_rich"]["data"]
+        aml_data["slug"] = self.slug
+
+        wp = WordpressIntegration(aml_data, img_urls)
+        wp.publish()
+
+#Models facilitating WordPress API calls
+class WordpressCategory(models.Model):
+    name = models.CharField(max_length=128)
+    wp_id = models.DecimalField(unique=True, max_digits=10, decimal_places=0)
+
+    def __str__(self):
+        return self.name
+
+class WordpressAuthor(models.Model):
+    name = models.CharField(max_length=128)
+    wp_id = models.DecimalField(unique=True, max_digits=10, decimal_places=0)
+
+    def __str__(self):
+        return self.name
 
 
 # Snapshot of a Package instance, defined as a collection of PackageItem objects

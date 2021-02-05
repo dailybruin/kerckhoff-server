@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
@@ -19,6 +21,8 @@ from .serializers import (
 
 
 slug_with_dots = "[-a-zA-Z0-9_.&]+"
+
+logger = logging.getLogger(__name__)
 
 
 class PackageSetViewSet(
@@ -98,9 +102,13 @@ class PackageViewSet(
 
     @action(methods=["post"], detail=True, serializer_class=Serializer)
     def publish(self, request, **kwargs):
-        package = self.get_object()
-        package.publish()
-        return Response(status=200)
+        try:
+            package = self.get_object()
+            package.publish()
+            return Response(status=200)
+        except Exception as err:
+            logger.warning(f"Exception raised during WordPress publishing: \"{err}\"")
+            return Response(status=400, data=err.detail)
 
     @action(
         methods=["post"], detail=True, serializer_class=CreatePackageVersionSerializer

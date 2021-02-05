@@ -186,6 +186,11 @@ class Common(Configuration):
                 "propagate": False,
             },
             "django.db.backends": {"handlers": ["console"], "level": "INFO"},
+            "kerckhoff" : {
+                "handlers": ["console"],
+                "level": "WARNING",
+                "propagate": False,
+            },
         },
     }
 
