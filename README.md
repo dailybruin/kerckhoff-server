@@ -13,13 +13,15 @@ The API backend for Kerckhoff.. Check out the project's [documentation](http://k
 
 # Local Development
 
-Make sure your `.env`/`.secrets` file is correct
+Make sure your `.env` file is correct
 ```
 PYTHONPATH="./:$PYTHONPATH"
 OAUTHLIB_RELAX_TOKEN_SCOPE=notnull
 DATABASE_URL=postgres://postgres:example@postgres:5432/postgres
 DJANGO_SECRET_KEY=password
 ```
+
+Make sure your `.secrets` file is correct as well
 
 Start the dev server for local development:
 ```bash
