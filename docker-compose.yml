@@ -3,6 +3,8 @@ version: "2"
 services:
   postgres:
     image: postgres:9.6
+    environment:
+      POSTGRES_PASSWORD: example
   web:
     restart: always
     env_file:
@@ -11,9 +13,7 @@ services:
     image: web
     build: ./
     command: >
-      bash -c "python wait_for_postgres.py &&
-               ./manage.py migrate &&
-               ./manage.py runserver 0.0.0.0:8000"
+      bash -c "python wait_for_postgres.py && ./manage.py migrate && ./manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./:/code
     ports:
