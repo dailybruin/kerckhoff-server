@@ -13,6 +13,16 @@ The API backend for Kerckhoff.. Check out the project's [documentation](http://k
 
 # Local Development
 
+Make sure your `.env` file is correct
+```
+PYTHONPATH="./:$PYTHONPATH"
+OAUTHLIB_RELAX_TOKEN_SCOPE=notnull
+DATABASE_URL=postgres://postgres:example@postgres:5432/postgres
+DJANGO_SECRET_KEY=password
+```
+
+Make sure your `.secrets` file is correct as well
+
 Start the dev server for local development:
 ```bash
 docker-compose up
@@ -73,3 +83,8 @@ git push origin master
 ```
 
 You're now ready to continuously ship! ✨ 💅 🛳
+
+
+# Troubleshooting
+
+If you get this error: `/usr/bin/env: ‘python\r’: No such file or directory`, try changing the `manage.py` file to use LF line endings instead of CRLF.
