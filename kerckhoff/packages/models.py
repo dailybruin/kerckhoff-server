@@ -20,15 +20,9 @@ from kerckhoff.packages.operations.models import (
     FORMAT_MD,
 )
 from kerckhoff.packages.operations.wordpress_utils import WordpressIntegration
-import pprint
 from kerckhoff.packages.constants import *
 from kerckhoff.packages.operations.utils import GoogleDocHTMLCleaner
 from kerckhoff.users.models import User as AppUser
-
-from base64 import b64encode
-from os import getenv
-import requests
-import tempfile
 
 User: AppUser = get_user_model()
 

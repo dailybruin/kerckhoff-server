@@ -1,5 +1,4 @@
 import tempfile
-import pprint
 from os import getenv
 from base64 import b64encode
 from html import unescape
@@ -21,7 +20,6 @@ from kerckhoff.packages.exceptions import (
 import kerckhoff.packages.models as models
 
 logger = logging.getLogger(__name__)
-pp = pprint.PrettyPrinter(indent=2) #for debugging
 
 
 """
