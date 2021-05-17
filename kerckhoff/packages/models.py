@@ -1,6 +1,7 @@
 import re
 import uuid
 from typing import List, NamedTuple, Optional
+from os import path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -250,11 +251,12 @@ class Package(models.Model):
         #Extracting files from package version
         packages_latest_version = self.get_version(self.latest_version.id_num).packageitem_set.all()
         img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
         for file in packages_latest_version:
+            file_ext = path.splitext(file.file_name)[-1]
             if(file.file_name == "data.aml"):
                 json_data = file.data
-            if("jpg" in file.file_name or "jpeg" in file.file_name
-               or "png" in file.file_name):
+            if(file_ext in supported_image_types):
                 img_urls[file.file_name] = file.data["src_large"]
         aml_data = json_data["content_rich"]["data"]
         aml_data["slug"] = self.slug
