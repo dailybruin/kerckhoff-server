@@ -2,6 +2,7 @@ from os import getenv
 from threading import Thread
 import re
 from urllib.parse import urlsplit
+from base64 import b64encode
 
 from django.test import TestCase
 from bs4 import BeautifulSoup
