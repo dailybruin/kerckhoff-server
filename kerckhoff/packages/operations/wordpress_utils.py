@@ -46,7 +46,7 @@ Constructor Params schema:
 class WordpressIntegration:
     def __init__(self, aml_data:dict, img_urls:dict):
         if aml_data == None:
-            raise PublishError("No AML file specified")
+            raise PublishError("No AML file specified", 400)
         self.aml_data = aml_data
         self.img_urls = img_urls
 
@@ -91,7 +91,7 @@ class WordpressIntegration:
             content = self.aml_data["content"]
             categories = self.aml_data["categories"].split(",")
         except KeyError as err:
-            raise PublishError(f"Missing top-level AML field: {err}")
+            raise PublishError(f"Missing top-level AML field: {err}", 400)
 
         #Convert metadata to Wordpress UUIDs
         author_id = self.get_author_id(author)
@@ -137,7 +137,7 @@ class WordpressIntegration:
         )
         if not response.ok:
             logger.warning(f"Failed to publish to WordPress. Response: {response.json()}")
-            raise PublishError("Failed to send data to WordPress")
+            raise PublishError("Failed to send data to WordPress", 500)
         else:
             logger.info("Successfully published to WordPress")
 
@@ -175,7 +175,7 @@ class WordpressIntegration:
                             data={"caption": caption}
                         )
                     except KeyError as err:
-                        raise PublishError(f"Missing image file: {err}")
+                        raise PublishError(f"Missing image file: {err}", 400)
                 elif item["type"] == "related_link":
                     #Get headline from url
                     url = bleach.clean(item["value"], strip=True, tags=[])
@@ -191,9 +191,9 @@ class WordpressIntegration:
                     unescaped = str(unescape(paragraph)).replace("\n", "")  #Newlines mess up the html
                     html_content.append(unescaped)
                 else:
-                    raise PublishError(f"Invalid content item type {item['type']}")
+                    raise PublishError(f"Invalid content item type {item['type']}", 400)
             except KeyError as err:
-                raise PublishError(f"Invalid AML item {item}")
+                raise PublishError(f"Invalid AML item {item}", 400)
         return "".join(html_content)
 
 
@@ -238,10 +238,10 @@ class WordpressIntegration:
                 else:
                     err_message = f"Unable to upload image {file_name} to WordPress"
                     logger.warning(f"{err_message}. Response: {wp_res.json()}")
-                    raise PublishError(err_message)
+                    raise PublishError(err_message, 500)
                 f.flush()
         else:
-            raise PublishError(f"Unable to retrieve image {file_name} from S3")
+            raise PublishError(f"Unable to retrieve image {file_name} from S3", 500)
 
 
     def get_id(self, model:str, object_name:str) -> int:
@@ -260,19 +260,19 @@ class WordpressIntegration:
             api_end = f"{self.url}/wp-json/wp/v2/categories?slug={object_name}"
 
         if object_name == "":
-            raise PublishError(f"No {model} name specified")
+            raise PublishError(f"No {model} name specified", 400)
 
         try:
             entry = WpModel.objects.get(name__iexact=object_name)
         except MultipleObjectsReturned:
-            raise PublishError(f"Multiple {model}s with {object_name}")
+            raise PublishError(f"Multiple {model}s with {object_name}", 400)
         except ObjectDoesNotExist:
             #Retrieve from API
             req_json = requests.get(api_end).json()
             try:
                 obj = req_json[0]
             except IndexError:
-                raise PublishError(f"No {model} named {object_name}")
+                raise PublishError(f"No {model} named {object_name}", 400)
 
             try:
                 #Try one more time to see if object exists in database
