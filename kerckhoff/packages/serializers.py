@@ -172,3 +172,4 @@ class RetrievePackageSerializer(PackageSerializer):
     class Meta(PackageSerializer.Meta):
         fields = PackageSerializer.Meta.fields + ("version_data",)
         read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)
+
