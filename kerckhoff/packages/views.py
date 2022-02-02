@@ -1,5 +1,8 @@
+from multiprocessing import log_to_stderr
+from typing import List
+from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
@@ -14,7 +17,7 @@ from .serializers import (
     RetrievePackageSerializer,
     PackageVersionSerializer,
     CreatePackageVersionSerializer,
-    PackageSetDetailedSerializer,
+    PackageSetDetailedSerializer
 )
 
 
@@ -80,7 +83,7 @@ class PackageViewSet(
 ):
     """
     Updates and retrieves packages
-    """
+    """ 
     def get_queryset(self):
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
 
@@ -150,3 +153,30 @@ class PackageCreateAndListViewSet(
     lookup_value_regex = slug_with_dots
     filter_backends = (filters.OrderingFilter,)
     ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
+
+    
+
+# Public Package View set for External site Kerckhoff API
+
+# mixins.ListModelMixin list out all packages in package set
+# mixins.RetrieveModelMixin retrieves specific/individual package within the package set
+class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin):
+    """
+    List and retrieve packages for external site
+    """
+    
+    # Retrieve only the packages from the package set that has the same name/ slug as the defined package set name/slug in the url 
+    def get_queryset(self):
+        return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
+    
+    serializer_class = PackageSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    # set slug as the lookup field so that we look up for packages in the package set with the same slug
+    lookup_field = "slug"
+    # verifies if the url slug is a valid slug and matches our valid slug format defined at the top of this file
+    lookup_value_regex = slug_with_dots
+
+
+
+
+
