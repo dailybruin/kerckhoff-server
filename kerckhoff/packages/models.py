@@ -58,12 +58,12 @@ class PackageSet(models.Model):
             self.metadata[GOOGLE_DRIVE_META_KEY] = data
             self.save()
         return GoogleDriveMeta(**data)
-# Test model
-class Practice(models.Model):
-    title = models.CharField(max_length = 200)
 
-    def __str__(self):
-        return self.title
+    def get_new_packages_from_gdrive(self) -> List["Package"]:
+        gdrive_info = self.get_or_create_gdrive_meta()
+        if not gdrive_info.folder_id:
+            raise GoogleDriveNotConfiguredException(self)
+
         ops = GoogleDriveOperations(self.created_by)
 
         items, _ = ops.list_folder(gdrive_info.folder_id)
@@ -194,7 +194,6 @@ class Package(models.Model):
         updated_package_item_titles: List[str],
     ):
         """Creates new PackageVersion object
-
         Arguments:
             user {User} -- User object, required argument
             package_version {PackageVersion} -- the package version to be added
@@ -301,4 +300,3 @@ class PackageItem(models.Model):
         )
         pi.save()
         return pi
-

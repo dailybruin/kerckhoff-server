@@ -1,5 +1,7 @@
 from multiprocessing import log_to_stderr
 from typing import List
+import os
+import json 
 from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -10,14 +12,16 @@ from rest_framework.response import Response
 from kerckhoff.integrations.serializers import IntegrationSerializer
 from .tasks import sync_gdrive_task
 
-from .models import PackageSet, Package
+from .models import PackageSet, Package, PackageVersion, PackageItem
 from .serializers import (
     PackageSetSerializer,
     PackageSerializer,
     RetrievePackageSerializer,
     PackageVersionSerializer,
     CreatePackageVersionSerializer,
-    PackageSetDetailedSerializer
+    PackageSetDetailedSerializer,
+    PackageItemSerializer,
+    TestSerializer
 )
 
 
@@ -167,7 +171,29 @@ class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixin
     
     # Retrieve only the packages from the package set that has the same name/ slug as the defined package set name/slug in the url 
     def get_queryset(self):
+        package = Package.objects.get(package_set__slug=self.kwargs["package_set_slug"], slug=self.kwargs["slug"])
+        package_items = package.get_version(package.latest_version.id_num).packageitem_set.all() 
+        # Get items from latest package
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        json_data = {"content_rich":{"data":{}}}
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "data.aml"):
+                json_data = file.data
+            if(file_ext in supported_image_types):
+                 # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        aml_data = json_data["content_rich"]["data"]
+        print(aml_data)
+        aml_data["slug"] = self.kwargs["slug"]
+
+        # package_set = Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
+        # package_set.update(metadata=img_urls)
+
+        # return package_set
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
+
     
     serializer_class = PackageSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
@@ -175,6 +201,60 @@ class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixin
     lookup_field = "slug"
     # verifies if the url slug is a valid slug and matches our valid slug format defined at the top of this file
     lookup_value_regex = slug_with_dots
+
+    @action(methods=["get"], detail=True)
+    def versions(self, request, **kwargs):
+        package: Package = self.get_object()
+        serializer = PackageVersionSerializer(package.get_all_versions(), many=True)
+        return Response({"results": serializer.data})
+
+    @action(methods=["get"], detail=True, serializer_class=Serializer)
+    def preview(self, request, **kwargs):
+        package = self.get_object()
+        package.fetch_cache()
+        serializer = PackageSerializer(package, many=False)
+        return Response(serializer.data)
+
+    
+
+    @action(methods=["get"], detail=True, serializer_class=Serializer)
+    def details(self, request, **kwargs):
+        package = self.get_object()
+        package.fetch_cache()
+        versionSerializer = PackageVersionSerializer(package.get_version(package.latest_version.id_num))
+        version_description = versionSerializer.data["version_description"]
+        folder_id = package.metadata["google_drive"]["folder_id"]
+        folder_url = package.metadata["google_drive"]["folder_url"]
+        
+        package_items = package.get_version(package.latest_version.id_num).packageitem_set.all() 
+
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                 # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        
+        cached = package.cached
+        for item in cached:
+            if(item["title"] == "article.aml"):
+                cached_article_preview = file.data["content_plain"]["raw"]
+        
+        return Response({"slug": package.slug, 
+        "description": version_description, 
+        "folder_id": folder_id,
+        "folder_url": folder_url,
+        "metadata": {},
+        "data": {"article": aml_data},
+        "processing": False if package.state == "pub" else True,
+        "cached_article_preview": cached_article_preview,
+        "last_fetched_date": package.last_fetched_date,
+        "package_set": str(package.package_set),
+        "latest_version": str(package.latest_version)
+        })
 
 
 

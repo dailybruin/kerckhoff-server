@@ -1,3 +1,4 @@
+from dataclasses import field
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
@@ -173,3 +174,40 @@ class RetrievePackageSerializer(PackageSerializer):
         fields = PackageSerializer.Meta.fields + ("version_data",)
         read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)
 
+class TestSerializer(serializers.ModelSerializer):
+    package_set = serializers.StringRelatedField()
+    created_by = SimpleUserSerializer(read_only=True)
+    latest_version = serializers.StringRelatedField()
+    tags = TagListSerializerField()
+
+    class Meta:
+        model = Package
+        fields = (
+            # "id",
+            "slug",
+            "package_set",
+            "metadata",
+            "cached",
+            "state",
+            "last_fetched_date",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "tags",
+            "latest_version",
+        )
+        read_only_fields = (
+            # "id",
+            "package_set",
+            "cached",
+            "last_fetched_date",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "latest_version",
+        )
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Package.objects.all(), fields=("slug", "package_set")
+            )
+        ]
