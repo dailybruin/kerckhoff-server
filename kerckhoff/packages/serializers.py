@@ -1,3 +1,4 @@
+import os
 from dataclasses import field
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
@@ -174,36 +175,77 @@ class RetrievePackageSerializer(PackageSerializer):
         fields = PackageSerializer.Meta.fields + ("version_data",)
         read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)
 
-class TestSerializer(serializers.ModelSerializer):
+class PackageInfoSerializer(serializers.ModelSerializer):
     package_set = serializers.StringRelatedField()
-    created_by = SimpleUserSerializer(read_only=True)
     latest_version = serializers.StringRelatedField()
-    tags = TagListSerializerField()
+    description = serializers.SerializerMethodField()
+    folder_id = serializers.SerializerMethodField()
+    folder_url = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
+    data = serializers.SerializerMethodField()
+    cached_article_preview = serializers.SerializerMethodField()
+
+    def get_description(self, obj: Package):
+        obj.fetch_cache()
+        versionSerializer = PackageVersionSerializer(obj.get_version(obj.latest_version.id_num))
+        return versionSerializer.data["version_description"]
+
+    def get_folder_id(self, obj: Package):
+      return obj.metadata["google_drive"]["folder_id"]
+    
+    def get_folder_url(self, obj: Package):
+      return obj.metadata["google_drive"]["folder_url"]
+
+    def get_metadata(self, obj: Package):
+      return {}
+    
+    def get_data(self, obj: Package):
+        obj.fetch_cache()
+        package_items = obj.get_version(obj.latest_version.id_num).packageitem_set.all() 
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                 # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        return {"article": aml_data}
+    
+    def get_cached_article_preview(self, obj: Package):
+        obj.fetch_cache()
+        cached = obj.cached
+        for item in cached:
+            if(item["title"] == "article.aml"):
+                cached_article_preview = item["content_plain"]["raw"]
+        return cached_article_preview
+
 
     class Meta:
         model = Package
         fields = (
-            # "id",
             "slug",
-            "package_set",
+            "description",
+            "folder_id",
+            "folder_url",
             "metadata",
-            "cached",
-            "state",
+            "data",
+            "cached_article_preview",
             "last_fetched_date",
-            "created_by",
-            "created_at",
-            "updated_at",
-            "tags",
+            "package_set",
             "latest_version",
+            
         )
         read_only_fields = (
-            # "id",
-            "package_set",
-            "cached",
+            "description",
+            "folder_id",
+            "folder_url",
+            "metadata",
+            "data",
+            "cached_article_preview",
             "last_fetched_date",
-            "created_by",
-            "created_at",
-            "updated_at",
+            "package_set",
             "latest_version",
         )
         validators = [
