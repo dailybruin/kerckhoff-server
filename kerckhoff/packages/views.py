@@ -1,7 +1,5 @@
 from multiprocessing import log_to_stderr
 from typing import List
-import os
-import json 
 from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -21,7 +19,7 @@ from .serializers import (
     CreatePackageVersionSerializer,
     PackageSetDetailedSerializer,
     PackageItemSerializer,
-    PackageInfoSerializer
+    PublicPackageSerializer
 )
 
 
@@ -175,12 +173,22 @@ class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixin
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
 
     
-    serializer_class = PackageInfoSerializer
+    serializer_class = PublicPackageSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
     # set slug as the lookup field so that we look up for packages in the package set with the same slug
     lookup_field = "slug"
     # verifies if the url slug is a valid slug and matches our valid slug format defined at the top of this file
     lookup_value_regex = slug_with_dots
+
+    # @action(methods=["get"], detail=True, serializer_class=Serializer, url_name='version',
+    #     url_path='version/(?P<version2>[^/.]+)')
+    # def version(self, request, **kwargs):
+    #     for key, value in kwargs.items():
+    #         print("{0} = {1}".format(key, value))
+    #     package = self.get_object()
+    #     package.fetch_cache()
+    #     serializer = PackageSerializer(package, many=False)
+    #     return Response(serializer.data)
 
 
 
