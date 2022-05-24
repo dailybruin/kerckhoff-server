@@ -59,7 +59,7 @@ class PackageSet(models.Model):
             self.save()
         return GoogleDriveMeta(**data)
 
-    def get_new_packages_from_gdrive(self) -> List["Package"]:
+    def get_packages_from_gdrive(self, only_new_packages: bool = False) -> List["Package"]:
         gdrive_info = self.get_or_create_gdrive_meta()
         if not gdrive_info.folder_id:
             raise GoogleDriveNotConfiguredException(self)
@@ -83,7 +83,10 @@ class PackageSet(models.Model):
                     },
                 },
             )
-            if created:
+            if only_new_packages: # Only add newly created packages
+                if created:
+                    created_packages.append(package)
+            else: # Add all packages
                 created_packages.append(package)
         return created_packages
 
