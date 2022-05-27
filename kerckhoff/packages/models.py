@@ -194,7 +194,6 @@ class Package(models.Model):
         updated_package_item_titles: List[str],
     ):
         """Creates new PackageVersion object
-
         Arguments:
             user {User} -- User object, required argument
             package_version {PackageVersion} -- the package version to be added

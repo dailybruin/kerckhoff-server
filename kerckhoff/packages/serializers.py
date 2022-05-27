@@ -1,3 +1,5 @@
+import os
+from dataclasses import field
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
@@ -172,3 +174,67 @@ class RetrievePackageSerializer(PackageSerializer):
     class Meta(PackageSerializer.Meta):
         fields = PackageSerializer.Meta.fields + ("version_data",)
         read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)
+
+class PublicPackageSerializer(serializers.ModelSerializer):
+    package_set = serializers.StringRelatedField()
+    latest_version = serializers.StringRelatedField()
+    description = serializers.SerializerMethodField()
+
+    data = serializers.SerializerMethodField()
+    cached_article_preview = serializers.SerializerMethodField()
+
+    def get_description(self, obj: Package):
+        
+        obj.fetch_cache()
+        if not obj.latest_version:
+            return "Has Not Created A Version Yet"
+        versionSerializer = PackageVersionSerializer(obj.get_version(obj.latest_version.id_num))
+        return versionSerializer.data["version_description"]
+ 
+    def get_data(self, obj: Package):
+        obj.fetch_cache()
+        if not obj.latest_version:
+            return "Has Not Created A Version Yet"
+        package_items = obj.get_version(obj.latest_version.id_num).packageitem_set.all() 
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+        return {"article": aml_data}
+    
+    def get_cached_article_preview(self, obj: Package):
+        obj.fetch_cache()
+        cached = obj.cached
+        for item in cached:
+            if(item["title"] == "article.aml"):
+                cached_article_preview = item["content_plain"]["raw"]
+        return cached_article_preview
+
+
+    class Meta:
+        model = Package
+        fields = (
+            "slug",
+            "description",
+            "metadata",
+            "data",
+            "cached_article_preview",
+            "last_fetched_date",
+            "package_set",
+            "latest_version",
+            
+        )
+        read_only_fields = (
+            "description",
+            "metadata",
+            "data",
+            "cached_article_preview",
+            "last_fetched_date",
+            "package_set",
+            "latest_version",
+        )
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Package.objects.all(), fields=("slug", "package_set")
+            )
+        ]
