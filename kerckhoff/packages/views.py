@@ -1,6 +1,8 @@
 from multiprocessing import log_to_stderr
 import os
 from typing import List
+import os
+import json 
 from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -20,7 +22,7 @@ from .serializers import (
     CreatePackageVersionSerializer,
     PackageSetDetailedSerializer,
     PackageItemSerializer,
-    PublicPackageSerializer
+    PackageInfoSerializer
 )
 
 
@@ -189,7 +191,7 @@ class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixin
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
 
     
-    serializer_class = PublicPackageSerializer
+    serializer_class = PackageInfoSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
     # set slug as the lookup field so that we look up for packages in the package set with the same slug
     lookup_field = "slug"

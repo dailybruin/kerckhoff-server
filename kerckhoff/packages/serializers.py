@@ -175,30 +175,42 @@ class RetrievePackageSerializer(PackageSerializer):
         fields = PackageSerializer.Meta.fields + ("version_data",)
         read_only_fields = PackageSerializer.Meta.read_only_fields + ("version_data",)
 
-class PublicPackageSerializer(serializers.ModelSerializer):
+class PackageInfoSerializer(serializers.ModelSerializer):
     package_set = serializers.StringRelatedField()
     latest_version = serializers.StringRelatedField()
     description = serializers.SerializerMethodField()
-
+    folder_id = serializers.SerializerMethodField()
+    folder_url = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
     cached_article_preview = serializers.SerializerMethodField()
 
     def get_description(self, obj: Package):
-        
         obj.fetch_cache()
-        if not obj.latest_version:
-            return "Has Not Created A Version Yet"
         versionSerializer = PackageVersionSerializer(obj.get_version(obj.latest_version.id_num))
         return versionSerializer.data["version_description"]
- 
+
+    def get_folder_id(self, obj: Package):
+      return obj.metadata["google_drive"]["folder_id"]
+    
+    def get_folder_url(self, obj: Package):
+      return obj.metadata["google_drive"]["folder_url"]
+
+    def get_metadata(self, obj: Package):
+      return {}
+    
     def get_data(self, obj: Package):
         obj.fetch_cache()
         if not obj.latest_version:
             return "Has Not Created A Version Yet"
         package_items = obj.get_version(obj.latest_version.id_num).packageitem_set.all()
+
         for file in package_items:
             if(file.file_name == "article.aml"):
                 aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                 # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
         return {"article": aml_data}
     
     def get_cached_article_preview(self, obj: Package):
@@ -215,6 +227,8 @@ class PublicPackageSerializer(serializers.ModelSerializer):
         fields = (
             "slug",
             "description",
+            "folder_id",
+            "folder_url",
             "metadata",
             "data",
             "cached_article_preview",
@@ -225,6 +239,8 @@ class PublicPackageSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "description",
+            "folder_id",
+            "folder_url",
             "metadata",
             "data",
             "cached_article_preview",
