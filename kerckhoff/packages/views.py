@@ -1,5 +1,11 @@
+from multiprocessing import log_to_stderr
+import os
+from typing import List
+import os
+import json 
+from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.response import Response
@@ -7,7 +13,7 @@ from rest_framework.response import Response
 from kerckhoff.integrations.serializers import IntegrationSerializer
 from .tasks import sync_gdrive_task
 
-from .models import PackageSet, Package
+from .models import PackageSet, Package, PackageVersion, PackageItem
 from .serializers import (
     PackageSetSerializer,
     PackageSerializer,
@@ -15,6 +21,8 @@ from .serializers import (
     PackageVersionSerializer,
     CreatePackageVersionSerializer,
     PackageSetDetailedSerializer,
+    PackageItemSerializer,
+    PackageInfoSerializer
 )
 
 
@@ -80,7 +88,7 @@ class PackageViewSet(
 ):
     """
     Updates and retrieves packages
-    """
+    """ 
     def get_queryset(self):
         return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
 
@@ -128,6 +136,22 @@ class PackageViewSet(
         )
         response = serializer.data
         return Response(response)
+    
+    @action(methods=["get"], detail=True, serializer_class=Serializer,
+    url_path='version/(?P<ver>[^/.]+)')
+    def version(self, request, **kwargs):
+        package_items = self.get_object().get_version(kwargs['ver']).packageitem_set.all()
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        return Response({"data": aml_data, "images": img_urls} )
+
 
 
 class PackageCreateAndListViewSet(
@@ -150,3 +174,33 @@ class PackageCreateAndListViewSet(
     lookup_value_regex = slug_with_dots
     filter_backends = (filters.OrderingFilter,)
     ordering_fields = ("slug", "last_fetched_date", "created_at", "updated_at")
+
+    
+
+# Public Package View set for External site Kerckhoff API
+
+# mixins.ListModelMixin list out all packages in package set
+# mixins.RetrieveModelMixin retrieves specific/individual package within the package set
+class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin):
+    """
+    List and retrieve packages for external site
+    """
+    
+    # Retrieve only the packages from the package set that has the same name/ slug as the defined package set name/slug in the url 
+    def get_queryset(self):
+        # return package_set
+        return Package.objects.filter(package_set__slug=self.kwargs["package_set_slug"])
+
+    
+    serializer_class = PackageInfoSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    # set slug as the lookup field so that we look up for packages in the package set with the same slug
+    lookup_field = "slug"
+    # verifies if the url slug is a valid slug and matches our valid slug format defined at the top of this file
+    lookup_value_regex = slug_with_dots
+
+
+
+
+
+

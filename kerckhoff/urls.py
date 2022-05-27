@@ -18,6 +18,7 @@ from .packages.views import (
     PackageSetCreateAndListViewSet,
     PackageViewSet,
     PackageCreateAndListViewSet,
+    PublicPackageViewSet
 )
 from .comments.views import CommentViewSet
 from .integrations.views import IntegrationOAuthView
@@ -28,16 +29,47 @@ router.register(r"users", UserCreateViewSet)
 router.register(r"package-sets", PackageSetViewSet)
 router.register(r"package-sets", PackageSetCreateAndListViewSet)
 
-package_set_router = NestedSimpleRouter(router, r"package-sets", lookup="package_set")
-package_set_router.register(
-    r"packages", PackageViewSet, base_name="package-sets_packages"
-)
-package_set_router.register(
-    r"packages", PackageCreateAndListViewSet, base_name="package-sets_packages"
+# API Router for Public External Site
+public_package_set_router = NestedSimpleRouter(
+    router, 
+    r"package-sets", 
+    lookup="package_set")
+
+public_package_set_router.register(
+    r"packages", 
+    PublicPackageViewSet,
+    base_name="public-package"
 )
 
-package_router = NestedSimpleRouter(package_set_router, r"packages", lookup="package")
-package_router.register(r"comments", CommentViewSet, base_name="comments")
+ 
+
+# To Internal Kerckhoff Frontend Site
+package_set_router = NestedSimpleRouter(
+    router, 
+    r"package-sets", 
+    lookup="package_set")
+
+package_set_router.register(
+    r"packages", 
+    PackageViewSet, 
+    base_name="package-generate_packages"
+)
+
+package_set_router.register(
+    r"packages", 
+    PackageCreateAndListViewSet, 
+    base_name="package-sets_packages"
+)
+
+package_router = NestedSimpleRouter(
+    package_set_router, 
+    r"packages", 
+    lookup="package")
+
+package_router.register(
+    r"comments", 
+    CommentViewSet, 
+    base_name="comments")
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -73,6 +105,9 @@ urlpatterns = [
     path("api/v1/", include(router.urls)),
     path("api/v1/", include(package_set_router.urls)),
     path("api/v1/", include(package_router.urls)),
+    # path for external site api
+    path("api/v1/public/",include(public_package_set_router.urls)),
+
     path("api/v1/integrations/", IntegrationOAuthView.as_view()),
     path("api-oauth/", include(auth_urlpatterns)),
     path("api-token-auth/", views.obtain_auth_token),
