@@ -195,9 +195,8 @@ class PublicPackageSerializer(serializers.ModelSerializer):
         obj.fetch_cache()
         if not obj.latest_version:
             return "Has Not Created A Version Yet"
-        package_items = obj.get_version(obj.latest_version.id_num).packageitem_set.all() 
+        package_items = obj.get_version(obj.latest_version.id_num).packageitem_set.all()
         for file in package_items:
-            file_ext = os.path.splitext(file.file_name)[-1]
             if(file.file_name == "article.aml"):
                 aml_data = file.data["content_rich"]["data"]
         return {"article": aml_data}

@@ -1,4 +1,5 @@
 from multiprocessing import log_to_stderr
+import os
 from typing import List
 from importlib_metadata import packages_distributions
 from rest_framework import mixins, viewsets, filters
@@ -133,6 +134,21 @@ class PackageViewSet(
         )
         response = serializer.data
         return Response(response)
+    
+    @action(methods=["get"], detail=True, serializer_class=Serializer,
+        url_path='version/(?P<ver>[^/.]+)')
+    def version(self, request, **kwargs):
+        package_items = self.get_object().get_version(kwargs['ver']).packageitem_set.all()
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        return Response({"data": aml_data, "images": img_urls} )
 
 
 class PackageCreateAndListViewSet(
@@ -179,16 +195,6 @@ class PublicPackageViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixin
     lookup_field = "slug"
     # verifies if the url slug is a valid slug and matches our valid slug format defined at the top of this file
     lookup_value_regex = slug_with_dots
-
-    # @action(methods=["get"], detail=True, serializer_class=Serializer, url_name='version',
-    #     url_path='version/(?P<version2>[^/.]+)')
-    # def version(self, request, **kwargs):
-    #     for key, value in kwargs.items():
-    #         print("{0} = {1}".format(key, value))
-    #     package = self.get_object()
-    #     package.fetch_cache()
-    #     serializer = PackageSerializer(package, many=False)
-    #     return Response(serializer.data)
 
 
 
