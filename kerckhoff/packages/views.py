@@ -137,6 +137,20 @@ class PackageViewSet(
         response = serializer.data
         return Response(response)
     
+    @action(methods=["get"], detail=True, serializer_class=Serializer,
+    url_path='version/(?P<ver>[^/.]+)')
+    def version(self, request, **kwargs):
+        package_items = self.get_object().get_version(kwargs['ver']).packageitem_set.all()
+        img_urls = {}
+        supported_image_types = [".jpg", ".jpeg", ".png"]
+        for file in package_items:
+            file_ext = os.path.splitext(file.file_name)[-1]
+            if(file.file_name == "article.aml"):
+                aml_data = file.data["content_rich"]["data"]
+            if(file_ext in supported_image_types):
+                # Don't worry about images for now
+                img_urls[file.file_name] = file.data["src_large"]
+        return Response({"data": aml_data, "images": img_urls} )
 
 
 
