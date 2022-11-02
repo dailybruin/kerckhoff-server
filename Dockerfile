@@ -7,7 +7,12 @@ RUN pip install pipenv --no-cache-dir
 # Allows docker to cache installed dependencies between builds
 COPY Pipfile Pipfile
 COPY Pipfile.lock Pipfile.lock
-RUN pipenv install --deploy --system
+COPY requirements.txt requirements.txt
+RUN apt-get -y update && apt-get -y install libpq-dev gcc zlib1g
+ENV LIBRARY_PATH=/lib:/usr/lib
+RUN /usr/local/bin/python -m pip install --upgrade pip
+RUN pip install importlib-metadata==4.13.0
+RUN pip install -r requirements.txt
 
 # Adds our application code to the image
 COPY . code
