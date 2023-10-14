@@ -6,7 +6,7 @@ from typing import Tuple, Optional, List
 from enum import Enum
 import logging
 
-from kerckhoff.packages.operations.exceptions import OperationFailed
+from kerckhoff.packages.operations.exceptions import OperationFailed, GoogleDriveFileNotFound
 from kerckhoff.packages.operations.models import GoogleDriveTextFile, GoogleDriveFile
 from kerckhoff.users.auth.google import GoogleOAuthStrategy
 
@@ -86,6 +86,14 @@ class GoogleDriveOperations:
                     break
 
             except RequestException:
+                error_msg = response.json()["error"]
+                error_code= error_msg["code"]
+
+                if error_code == 404:
+                    logger.error(
+                        f"File not found for id:{gdrive_folder_id} {response.json()}"
+                    )
+                    raise GoogleDriveFileNotFound(response.json()) 
                 logger.error(
                     f"Failed to list folder for id:{gdrive_folder_id} {response.json()}"
                 )
